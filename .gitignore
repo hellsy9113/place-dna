@@ -1,0 +1,19 @@
+# Node
+node_modules
+.next
+out
+dist
+
+# Python
+__pycache__
+*.pyc
+.venv
+.env
+
+# Database
+pgdata
+
+# OS / IDE
+.DS_Store
+.vscode
+.idea

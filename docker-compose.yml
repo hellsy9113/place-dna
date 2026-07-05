@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgis/postgis:16-3.5
+    container_name: placedna_postgis
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: placedna
+      POSTGRES_USER: placedna
+      POSTGRES_PASSWORD: placedna_dev_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - placedna_pgdata:/var/lib/postgresql/data
+      - ./infra/db/init:/docker-entrypoint-initdb.d
+
+volumes:
+  placedna_pgdata:
