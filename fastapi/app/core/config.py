@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     landmark_lookup_timeout_seconds: int = 8
 
     frontend_origin: str | None = None
+    allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     model_config = SettingsConfigDict(
         env_file=".env",
