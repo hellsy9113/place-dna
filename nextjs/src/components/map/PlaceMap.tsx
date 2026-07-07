@@ -19,8 +19,31 @@ const indiaBounds: maplibregl.LngLatBoundsLike = [
   [99.5, 38.5],
 ];
 
-// Use a neutral no-label basemap so PlaceDNA focuses on geospatial identity,
+// Use a satellite-first basemap so PlaceDNA focuses on geospatial identity,
 // not political boundary labeling.
+const satelliteMapStyle: maplibregl.StyleSpecification = {
+  version: 8,
+  sources: {
+    "esri-world-imagery": {
+      type: "raster",
+      tiles: [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      ],
+      tileSize: 256,
+      attribution: "Tiles &copy; Esri",
+    },
+  },
+  layers: [
+    {
+      id: "esri-world-imagery-layer",
+      type: "raster",
+      source: "esri-world-imagery",
+      minzoom: 0,
+      maxzoom: 19,
+    },
+  ],
+};
+
 const neutralMapStyle: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
@@ -63,9 +86,11 @@ export function PlaceMap({ onLocationSelect }: PlaceMapProps) {
       return;
     }
 
+    let fallbackApplied = false;
+
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: neutralMapStyle,
+      style: satelliteMapStyle,
       center: initialCenter,
       zoom: 4,
       attributionControl: false,
@@ -73,10 +98,43 @@ export function PlaceMap({ onLocationSelect }: PlaceMapProps) {
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
-    map.once("load", () => {
+
+    const fitIndiaView = () => {
       map.fitBounds(indiaBounds, {
         padding: 40,
         duration: 0,
+      });
+    };
+
+    map.once("load", () => {
+      fitIndiaView();
+    });
+
+    map.on("error", (event) => {
+      if (fallbackApplied) {
+        return;
+      }
+
+      const sourceId =
+        "sourceId" in event && typeof event.sourceId === "string"
+          ? event.sourceId
+          : undefined;
+      const errorMessage =
+        "error" in event && event.error instanceof Error
+          ? event.error.message
+          : "";
+
+      if (
+        sourceId !== "esri-world-imagery" &&
+        !errorMessage.includes("World_Imagery")
+      ) {
+        return;
+      }
+
+      fallbackApplied = true;
+      map.setStyle(neutralMapStyle);
+      map.once("styledata", () => {
+        fitIndiaView();
       });
     });
 
@@ -113,10 +171,10 @@ export function PlaceMap({ onLocationSelect }: PlaceMapProps) {
   return (
     <div className="relative">
       <MapClickHint />
-      <div
-        ref={containerRef}
-        className="h-[460px] w-full rounded-[1.75rem] border-2 border-[color:var(--placedna-ink)]"
-      />
+      <div className="relative overflow-hidden rounded-[1.75rem] border-2 border-[color:var(--placedna-ink)] shadow-pop">
+        <div ref={containerRef} className="h-[460px] w-full" />
+        <div className="pointer-events-none absolute inset-0 bg-[#FFFDF5]/10 mix-blend-soft-light" />
+      </div>
     </div>
   );
 }
