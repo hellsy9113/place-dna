@@ -40,7 +40,7 @@ class PlaceDNALocation(BaseModel):
 class PlaceDNAResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: UUID | None = None
+    id: UUID | StrictStr | None = None
     place_name: StrictStr
     title: StrictStr
     rarity: Rarity

@@ -10,6 +10,7 @@ from app.api.place_dna import router as place_dna_router
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(
     title="PlaceDNA API",
@@ -18,7 +19,7 @@ app = FastAPI(
 
 
 def build_allowed_origins() -> list[str]:
-    origins = []
+    origins: list[str] = []
 
     if settings.allowed_origins:
         origins.extend(
@@ -30,28 +31,51 @@ def build_allowed_origins() -> list[str]:
     if settings.frontend_origin:
         origins.append(settings.frontend_origin.strip().rstrip("/"))
 
+    origins.append("https://place-dna.vercel.app")
+
     return list(dict.fromkeys(origins))
 
 
+allowed_origins = build_allowed_origins()
+
+logger.info("Allowed CORS origins: %s", allowed_origins)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=build_allowed_origins(),
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.exception("Unhandled backend error")
+    logger.exception("Unhandled backend error on %s", request.url.path)
+
+    origin = request.headers.get("origin")
+    headers: dict[str, str] = {}
+
+    if origin and origin.rstrip("/") in allowed_origins:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
 
     return JSONResponse(
         status_code=500,
         content={
-            "detail": "Internal server error. Check backend logs.",
+            "detail": "Internal server error. Check Render backend logs.",
         },
+        headers=headers,
     )
+
+
+@app.get("/api/cors-test")
+def cors_test() -> dict[str, list[str] | str]:
+    return {
+        "status": "ok",
+        "allowed_origins": allowed_origins,
+    }
 
 
 app.include_router(health_router, prefix="/api")

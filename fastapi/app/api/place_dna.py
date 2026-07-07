@@ -1,6 +1,6 @@
-import math
+import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -8,61 +8,36 @@ from app.repositories.place_cards_repository import save_place_card
 from app.schemas.place_dna import PlaceDNAResponse
 from app.services.place_dna_generator import generate_mock_place_dna
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(tags=["place-dna"])
 
 
 @router.get("/place-dna", response_model=PlaceDNAResponse)
 def get_place_dna(
-    lat: str = Query(...),
-    lon: str = Query(...),
-    radius_m: str = Query("500"),
+    lat: float = Query(..., ge=-90, le=90),
+    lon: float = Query(..., ge=-180, le=180),
+    radius_m: int = Query(500, ge=100, le=2000),
     db: Session = Depends(get_db),
 ) -> PlaceDNAResponse:
-    parsed_lat = _parse_float(lat, "lat", minimum=-90, maximum=90)
-    parsed_lon = _parse_float(lon, "lon", minimum=-180, maximum=180)
-    parsed_radius = _parse_int(radius_m, "radius_m", minimum=100, maximum=2000)
-
-    card = PlaceDNAResponse.model_validate(
-        generate_mock_place_dna(parsed_lat, parsed_lon, parsed_radius)
-    )
-    card_id = save_place_card(db, card)
-    return PlaceDNAResponse.model_validate({**card.model_dump(), "id": card_id})
-
-
-def _parse_float(raw_value: str, field_name: str, *, minimum: float, maximum: float) -> float:
     try:
-        value = float(raw_value)
-    except ValueError as exc:
+        card = PlaceDNAResponse.model_validate(
+            generate_mock_place_dna(
+                lat=lat,
+                lon=lon,
+                radius_m=radius_m,
+            )
+        )
+    except Exception as exc:
+        logger.exception("PlaceDNA generation failed before database save")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"{field_name} must be a valid number.",
+            status_code=500,
+            detail="Failed to generate PlaceDNA card.",
         ) from exc
 
-    if not math.isfinite(value):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"{field_name} must be a finite number.",
-        )
-    if not minimum <= value <= maximum:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"{field_name} must be between {minimum} and {maximum}.",
-        )
-    return value
-
-
-def _parse_int(raw_value: str, field_name: str, *, minimum: int, maximum: int) -> int:
     try:
-        value = int(raw_value)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"{field_name} must be a valid integer.",
-        ) from exc
-
-    if not minimum <= value <= maximum:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"{field_name} must be between {minimum} and {maximum}.",
-        )
-    return value
+        card_id = save_place_card(db, card)
+        return card.model_copy(update={"id": card_id})
+    except Exception as exc:
+        logger.exception("PlaceDNA generated but database save failed")
+        return card.model_copy(update={"id": "unsaved"})
