@@ -14,22 +14,36 @@ type PlaceMapProps = {
 };
 
 const initialCenter: [number, number] = [78.9629, 20.5937];
+const indiaBounds: maplibregl.LngLatBoundsLike = [
+  [66.0, 5.0],
+  [99.5, 38.5],
+];
 
-const mapStyle: maplibregl.StyleSpecification = {
+// Use a neutral no-label basemap so PlaceDNA focuses on geospatial identity,
+// not political boundary labeling.
+const neutralMapStyle: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
-    osm: {
+    "carto-light-nolabels": {
       type: "raster",
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      tiles: [
+        "https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
+        "https://b.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
+        "https://c.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
+        "https://d.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
+      ],
       tileSize: 256,
-      attribution: "© OpenStreetMap contributors",
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
     },
   },
   layers: [
     {
-      id: "osm",
+      id: "carto-light-nolabels-layer",
       type: "raster",
-      source: "osm",
+      source: "carto-light-nolabels",
+      minzoom: 0,
+      maxzoom: 20,
     },
   ],
 };
@@ -51,7 +65,7 @@ export function PlaceMap({ onLocationSelect }: PlaceMapProps) {
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: mapStyle,
+      style: neutralMapStyle,
       center: initialCenter,
       zoom: 4,
       attributionControl: false,
@@ -59,6 +73,12 @@ export function PlaceMap({ onLocationSelect }: PlaceMapProps) {
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
+    map.once("load", () => {
+      map.fitBounds(indiaBounds, {
+        padding: 40,
+        duration: 0,
+      });
+    });
 
     map.on("click", (event) => {
       const location = {
