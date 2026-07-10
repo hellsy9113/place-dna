@@ -90,6 +90,10 @@ export function GeneratedPlaceCard({
 
   const tone = rarityToneMap[data.rarity];
   const landmarkImageUrl = data.landmark.image_url?.trim() || null;
+  const landmarkDistanceLabel =
+    data.landmark.distance_m === null
+      ? "Distance unavailable"
+      : `${Math.round(data.landmark.distance_m)}m away`;
 
   return (
     <StickerCard
@@ -157,7 +161,7 @@ export function GeneratedPlaceCard({
               </p>
             </div>
             <ShapeBadge tone="tertiary" soft className="px-3 py-2 text-[0.62rem] tracking-[0.18em] print:px-2 print:py-1 print:text-[0.5rem]">
-              {Math.round(data.landmark.distance_m)}m away
+              {landmarkDistanceLabel}
             </ShapeBadge>
           </div>
         </div>

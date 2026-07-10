@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.db.session import SessionLocal
 from app.repositories.place_cards_repository import find_cached_place_card, save_place_card
 from app.schemas.place_dna import PlaceDNAResponse
+from app.services.card_quality import is_generated_card_useful_for_cache
 from app.services.location_candidate_validator import validate_prewarm_candidate
 from app.services.place_dna_generator import generate_mock_place_dna
 from app.services.random_india_sampler import PrewarmCandidate, generate_random_india_candidates
@@ -17,10 +18,6 @@ from app.services.random_india_sampler import PrewarmCandidate, generate_random_
 logger = logging.getLogger(__name__)
 
 _SEED_LOCATIONS_PATH = Path(__file__).resolve().parent.parent / "data" / "seed_locations.json"
-_VAGUE_LANDMARK_MARKERS = (
-    "no major landmark",
-    "unknown",
-)
 
 
 @dataclass(slots=True)
@@ -30,6 +27,7 @@ class PrewarmResult:
     generated: int = 0
     failed: int = 0
     skipped_invalid: int = 0
+    skipped_vague: int = 0
 
 
 def load_fixed_seed_candidates() -> list[PrewarmCandidate]:
@@ -73,22 +71,6 @@ def build_prewarm_candidates() -> list[PrewarmCandidate]:
     if settings.prewarm_batch_size > 0:
         return candidates[: settings.prewarm_batch_size]
     return candidates
-
-
-def is_generated_card_useful_for_cache(card: PlaceDNAResponse) -> bool:
-    landmark_name = (card.landmark.name or "").strip()
-    description = (card.description or "").strip()
-    region_type = (card.region_type or "").strip()
-    rarity = (card.rarity or "").strip()
-
-    if not landmark_name or not description or not region_type or not rarity:
-        return False
-
-    lowered_landmark = landmark_name.lower()
-    if any(marker in lowered_landmark for marker in _VAGUE_LANDMARK_MARKERS):
-        return False
-
-    return True
 
 
 def run_prewarm_batch() -> PrewarmResult:
@@ -172,7 +154,7 @@ def run_prewarm_batch() -> PrewarmResult:
                     continue
 
                 if settings.prewarm_skip_vague_cards and not is_generated_card_useful_for_cache(card):
-                    result.skipped_invalid += 1
+                    result.skipped_vague += 1
                     logger.info(
                         "Generated card skipped because landmark result was vague label=%s",
                         candidate.label,

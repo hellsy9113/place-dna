@@ -6,8 +6,47 @@ type FetchPlaceDNAParams = {
   radiusM?: number;
 };
 
+type PlaceDNAErrorResponse = {
+  detail?:
+    | string
+    | {
+        message?: string;
+      };
+  message?: string;
+};
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+
+function extractPlaceDNAMessage(payload: string): string | null {
+  if (!payload) {
+    return null;
+  }
+
+  try {
+    const errorData = JSON.parse(payload) as PlaceDNAErrorResponse;
+    if (typeof errorData.detail === "string" && errorData.detail.trim()) {
+      return errorData.detail;
+    }
+    if (
+      errorData.detail &&
+      typeof errorData.detail === "object" &&
+      typeof errorData.detail.message === "string" &&
+      errorData.detail.message.trim()
+    ) {
+      return errorData.detail.message;
+    }
+    if (typeof errorData.message === "string" && errorData.message.trim()) {
+      return errorData.message;
+    }
+  } catch {
+    if (payload.trim()) {
+      return payload.trim();
+    }
+  }
+
+  return null;
+}
 
 export async function fetchPlaceDNA({
   lat,
@@ -25,21 +64,13 @@ export async function fetchPlaceDNA({
     },
   });
 
+  const payload = await response.text();
+
   if (!response.ok) {
-    let message = "Failed to generate PlaceDNA card.";
-
-    try {
-      const errorData = (await response.json()) as { detail?: string; message?: string };
-      message = errorData.detail ?? errorData.message ?? message;
-    } catch {
-      const text = await response.text();
-      if (text) {
-        message = text;
-      }
-    }
-
-    throw new Error(message);
+    throw new Error(
+      extractPlaceDNAMessage(payload) ?? "Failed to generate PlaceDNA card.",
+    );
   }
 
-  return (await response.json()) as PlaceDNAResponse;
+  return JSON.parse(payload) as PlaceDNAResponse;
 }

@@ -49,7 +49,7 @@ export type PlaceDNAStats = {
 
 export type PlaceDNALandmark = {
   name: string;
-  distance_m: number;
+  distance_m: number | null;
   image_url: string | null;
 };
 
@@ -75,6 +75,11 @@ export type PlaceDNAResponse = {
 export type SelectedMapLocation = {
   lat: number;
   lon: number;
+};
+
+export type MapFocusRequest = {
+  id: number;
+  location: SelectedMapLocation;
 };
 
 export type NavLink = {

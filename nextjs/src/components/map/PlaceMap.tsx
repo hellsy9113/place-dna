@@ -2,14 +2,15 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type MutableRefObject } from "react";
 import maplibregl from "maplibre-gl";
 
-import type { SelectedMapLocation } from "@/types/placedna";
+import type { MapFocusRequest, SelectedMapLocation } from "@/types/placedna";
 
 import { MapClickHint } from "./MapClickHint";
 
 type PlaceMapProps = {
+  focusRequest?: MapFocusRequest | null;
   onLocationSelect: (location: SelectedMapLocation) => void;
 };
 
@@ -71,15 +72,72 @@ const neutralMapStyle: maplibregl.StyleSpecification = {
   ],
 };
 
-export function PlaceMap({ onLocationSelect }: PlaceMapProps) {
+function updateMarker(
+  markerRef: MutableRefObject<maplibregl.Marker | null>,
+  map: maplibregl.Map,
+  location: SelectedMapLocation,
+) {
+  const coordinates: [number, number] = [location.lon, location.lat];
+
+  if (markerRef.current) {
+    markerRef.current.setLngLat(coordinates);
+    return;
+  }
+
+  markerRef.current = new maplibregl.Marker({
+    color: "#8B5CF6",
+    scale: 1.2,
+  })
+    .setLngLat(coordinates)
+    .addTo(map);
+}
+
+function applyFocusRequest(
+  mapRef: MutableRefObject<maplibregl.Map | null>,
+  markerRef: MutableRefObject<maplibregl.Marker | null>,
+  appliedFocusRequestIdRef: MutableRefObject<number | null>,
+  request: MapFocusRequest | null,
+) {
+  if (!request || appliedFocusRequestIdRef.current === request.id) {
+    return;
+  }
+
+  const map = mapRef.current;
+
+  if (!map) {
+    return;
+  }
+
+  appliedFocusRequestIdRef.current = request.id;
+  updateMarker(markerRef, map, request.location);
+  map.flyTo({
+    center: [request.location.lon, request.location.lat],
+    zoom: 13,
+    essential: true,
+  });
+}
+
+export function PlaceMap({ focusRequest = null, onLocationSelect }: PlaceMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const onLocationSelectRef = useRef(onLocationSelect);
+  const focusRequestRef = useRef<MapFocusRequest | null>(focusRequest);
+  const appliedFocusRequestIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     onLocationSelectRef.current = onLocationSelect;
   }, [onLocationSelect]);
+
+  useEffect(() => {
+    focusRequestRef.current = focusRequest;
+    applyFocusRequest(
+      mapRef,
+      markerRef,
+      appliedFocusRequestIdRef,
+      focusRequest,
+    );
+  }, [focusRequest]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) {
@@ -108,6 +166,12 @@ export function PlaceMap({ onLocationSelect }: PlaceMapProps) {
 
     map.once("load", () => {
       fitIndiaView();
+      applyFocusRequest(
+        mapRef,
+        markerRef,
+        appliedFocusRequestIdRef,
+        focusRequestRef.current,
+      );
     });
 
     map.on("error", (event) => {
@@ -144,17 +208,7 @@ export function PlaceMap({ onLocationSelect }: PlaceMapProps) {
         lon: event.lngLat.lng,
       };
 
-      if (markerRef.current) {
-        markerRef.current.remove();
-      }
-
-      markerRef.current = new maplibregl.Marker({
-        color: "#8B5CF6",
-        scale: 1.2,
-      })
-        .setLngLat(event.lngLat)
-        .addTo(map);
-
+      updateMarker(markerRef, map, location);
       onLocationSelectRef.current(location);
     });
 

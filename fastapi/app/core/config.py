@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     prewarm_min_certainty_score: float = 0.65
     prewarm_validate_candidates: bool = True
     prewarm_skip_vague_cards: bool = True
+    production_validate_clicks: bool = True
+    production_skip_external_api_for_invalid_clicks: bool = True
+    production_cache_only_useful_cards: bool = True
+    production_min_certainty_score: float = 0.50
 
     model_config = SettingsConfigDict(
         env_file=".env",

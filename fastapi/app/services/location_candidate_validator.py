@@ -5,6 +5,10 @@ from math import sqrt
 
 from app.core.config import settings
 
+UNSUPPORTED_LOCATION_MESSAGE = (
+    "This location is outside the currently supported PlaceDNA coverage area."
+)
+
 INDIA_BOUNDS = {
     "lat_min": 6.0,
     "lat_max": 37.5,
@@ -175,6 +179,44 @@ def validate_prewarm_candidate(lat: float, lon: float) -> CandidateValidationRes
     return CandidateValidationResult(
         is_valid=True,
         reason="Candidate accepted",
+        certainty_score=certainty_score,
+    )
+
+
+def validate_production_click(lat: float, lon: float) -> CandidateValidationResult:
+    if lat < -90 or lat > 90 or lon < -180 or lon > 180 or lat < -60:
+        return CandidateValidationResult(
+            is_valid=False,
+            reason="Invalid or unsupported global coordinate",
+            certainty_score=0.0,
+        )
+
+    if not _point_in_box(lat, lon, INDIA_BOUNDS):
+        return CandidateValidationResult(
+            is_valid=False,
+            reason="Location is outside supported India coverage",
+            certainty_score=0.0,
+        )
+
+    if any(_point_in_box(lat, lon, zone) for zone in WATER_EXCLUSION_ZONES):
+        return CandidateValidationResult(
+            is_valid=False,
+            reason="Unsupported ocean or sea location",
+            certainty_score=0.2,
+        )
+
+    certainty_score = calculate_candidate_certainty(lat, lon)
+    threshold = max(0.0, min(1.0, settings.production_min_certainty_score))
+    if certainty_score < threshold:
+        return CandidateValidationResult(
+            is_valid=False,
+            reason="Location certainty score too low for supported coverage",
+            certainty_score=certainty_score,
+        )
+
+    return CandidateValidationResult(
+        is_valid=True,
+        reason="Production click accepted",
         certainty_score=certainty_score,
     )
 
