@@ -17,42 +17,41 @@ export function HeroSection() {
           </ShapeBadge>
 
           <h1 className="font-display mt-7 text-5xl font-extrabold leading-[0.94] tracking-[-0.07em] text-[color:var(--placedna-ink)] sm:text-6xl lg:text-7xl">
-            Click any{" "}
+            Discover the DNA of{" "}
             <span className="relative inline-block">
-              place
+              Any Place in India
               <svg
                 className="absolute -bottom-5 left-0 h-4 w-full text-[color:var(--placedna-quaternary)]"
-                viewBox="0 0 140 20"
+                viewBox="0 0 240 20"
                 fill="none"
                 aria-hidden="true"
               >
                 <path
-                  d="M4 10C22 2 36 18 54 10C70 4 88 17 106 10C120 5 132 11 136 10"
+                  d="M4 10C34 2 60 18 92 10C122 4 152 17 186 10C206 5 228 12 236 10"
                   stroke="currentColor"
                   strokeWidth="4"
                   strokeLinecap="round"
                 />
               </svg>
             </span>
-            .
             <br />
-            Reveal its{" "}
+            Generate{" "}
             <span className="relative inline-flex items-center gap-2 text-[color:var(--placedna-accent)]">
-              DNA
+              collectible cards
               <span className="shape-confetti static h-4 w-4 rotate-12 rounded-[6px] bg-[color:var(--placedna-secondary)] shadow-[2px_2px_0_0_var(--placedna-ink)]" />
             </span>
             .
           </h1>
 
           <p className="mt-8 max-w-2xl text-lg leading-8 text-[color:var(--placedna-muted-foreground)] sm:text-xl">
-            PlaceDNA turns any map location into a collectible geospatial card
+            PlaceDNA turns map clicks into collectible GIS-inspired place cards
             using vegetation, population pressure, built-up density, water
-            access, connectivity, and landmark intelligence.
+            access, connectivity, and landmark context across India.
           </p>
 
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <PopButton href="/map" size="lg" className="pl-6 pr-3">
-              <span>Try the map</span>
+              <span>Generate your PlaceDNA card</span>
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[color:var(--placedna-accent)]">
                 <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
               </span>

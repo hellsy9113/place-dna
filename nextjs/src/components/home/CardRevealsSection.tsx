@@ -10,7 +10,7 @@ export function CardRevealsSection() {
     <SectionShell
       id="card-dna"
       eyebrow="Card DNA"
-      title="What the card reveals"
+      title="What Each Card Shows"
       description="Every card turns spatial signals into a compact, readable identity for the clicked place."
       tone="secondary"
     >

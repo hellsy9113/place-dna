@@ -1,0 +1,56 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="80" y1="40" x2="1120" y2="590" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFDF5"/>
+      <stop offset="1" stop-color="#FCE7F3"/>
+    </linearGradient>
+    <linearGradient id="cardTop" x1="742" y1="154" x2="948" y2="360" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#F472B6"/>
+    </linearGradient>
+    <linearGradient id="pin" x1="932" y1="110" x2="1030" y2="250" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#34D399"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" rx="40" fill="url(#bg)"/>
+  <rect x="32" y="32" width="1136" height="566" rx="36" stroke="#1E293B" stroke-width="8"/>
+  <g opacity="0.7">
+    <path d="M66 126H566" stroke="#E2E8F0" stroke-width="4" stroke-dasharray="10 14"/>
+    <path d="M66 186H566" stroke="#E2E8F0" stroke-width="4" stroke-dasharray="10 14"/>
+    <path d="M66 246H566" stroke="#E2E8F0" stroke-width="4" stroke-dasharray="10 14"/>
+    <path d="M66 306H566" stroke="#E2E8F0" stroke-width="4" stroke-dasharray="10 14"/>
+    <path d="M66 366H566" stroke="#E2E8F0" stroke-width="4" stroke-dasharray="10 14"/>
+    <path d="M66 426H566" stroke="#E2E8F0" stroke-width="4" stroke-dasharray="10 14"/>
+    <path d="M126 66V510" stroke="#E2E8F0" stroke-width="4" stroke-dasharray="10 14"/>
+    <path d="M206 66V510" stroke="#E2E8F0" stroke-width="4" stroke-dasharray="10 14"/>
+    <path d="M286 66V510" stroke="#E2E8F0" stroke-width="4" stroke-dasharray="10 14"/>
+    <path d="M366 66V510" stroke="#E2E8F0" stroke-width="4" stroke-dasharray="10 14"/>
+    <path d="M446 66V510" stroke="#E2E8F0" stroke-width="4" stroke-dasharray="10 14"/>
+    <path d="M526 66V510" stroke="#E2E8F0" stroke-width="4" stroke-dasharray="10 14"/>
+  </g>
+  <circle cx="150" cy="112" r="30" fill="#34D399" stroke="#1E293B" stroke-width="6"/>
+  <rect x="202" y="84" width="110" height="34" rx="17" fill="#FBBF24" stroke="#1E293B" stroke-width="4"/>
+  <text x="92" y="194" fill="#1E293B" font-family="Arial, sans-serif" font-size="96" font-weight="800">PlaceDNA</text>
+  <text x="92" y="262" fill="#475569" font-family="Arial, sans-serif" font-size="34" font-weight="700">Discover the DNA of Any Place in India</text>
+  <text x="92" y="330" fill="#64748B" font-family="Arial, sans-serif" font-size="24" font-weight="500">Collectible GIS-inspired place cards built from map context,</text>
+  <text x="92" y="364" fill="#64748B" font-family="Arial, sans-serif" font-size="24" font-weight="500">vegetation, population pressure, landmarks, and location signals.</text>
+  <g transform="translate(744 118) rotate(6)">
+    <rect width="312" height="396" rx="34" fill="#FFFFFF"/>
+    <rect x="2" y="2" width="308" height="392" rx="32" stroke="#1E293B" stroke-width="6"/>
+    <rect x="28" y="28" width="256" height="164" rx="28" fill="url(#cardTop)"/>
+    <path d="M56 144C94 104 134 94 174 114C194 124 214 146 226 182" stroke="white" stroke-width="11" stroke-linecap="round"/>
+    <text x="30" y="236" fill="#64748B" font-family="Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="2">NEAR INDIA GATE</text>
+    <text x="30" y="278" fill="#1E293B" font-family="Arial, sans-serif" font-size="34" font-weight="800">Balanced Urban Core</text>
+    <rect x="30" y="302" width="112" height="22" rx="11" fill="#EDE9FE"/>
+    <rect x="154" y="302" width="96" height="22" rx="11" fill="#D1FAE5"/>
+    <rect x="30" y="342" width="252" height="16" rx="8" fill="#E2E8F0"/>
+    <rect x="30" y="370" width="204" height="16" rx="8" fill="#FCE7F3"/>
+  </g>
+  <path d="M970 112C934 112 904 142 904 178C904 222 961 290 970 302C979 290 1036 222 1036 178C1036 142 1006 112 970 112Z" fill="url(#pin)"/>
+  <path d="M970 112C934 112 904 142 904 178C904 222 961 290 970 302C979 290 1036 222 1036 178C1036 142 1006 112 970 112Z" stroke="#1E293B" stroke-width="8" stroke-linejoin="round"/>
+  <circle cx="970" cy="178" r="24" fill="#FFFDF5" stroke="#1E293B" stroke-width="8"/>
+  <path d="M150 520C248 456 356 430 462 438C566 446 654 492 728 484" stroke="#8B5CF6" stroke-width="10" stroke-linecap="round"/>
+  <path d="M92 530H288" stroke="#1E293B" stroke-width="6" stroke-linecap="round"/>
+  <path d="M92 558H214" stroke="#F472B6" stroke-width="6" stroke-linecap="round"/>
+</svg>

@@ -10,7 +10,7 @@ export function HowItWorksSection() {
     <SectionShell
       id="how-it-works"
       eyebrow="How it works"
-      title="Map click in. Collectible geospatial card out."
+      title="How PlaceDNA Works"
       description="PlaceDNA keeps the workflow simple: choose a place, analyze layered signals, and reveal a card that feels fun enough to keep."
       tone="quaternary"
     >
