@@ -33,6 +33,7 @@ export function MapDemoClient() {
   const [locationWarning, setLocationWarning] = useState<string | null>(null);
   const [card, setCard] = useState<PlaceDNAResponse | null>(null);
   const [focusRequest, setFocusRequest] = useState<MapFocusRequest | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const requestIdRef = useRef(0);
   const focusRequestIdRef = useRef(0);
   const hasDownloadableCard = card !== null && !isLoading && !error;
@@ -249,16 +250,16 @@ export function MapDemoClient() {
         </div>
 
         <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-          {hasDownloadableCard ? (
-            <div className="flex justify-start lg:justify-end">
-              <DownloadCardButton
-                title={card?.title}
-                placeName={card?.place_name}
-              />
-            </div>
-          ) : null}
+          <div className="flex justify-start lg:justify-end">
+            <DownloadCardButton
+              cardRef={cardRef}
+              placeCard={card}
+              isGenerating={isLoading}
+            />
+          </div>
 
           <div
+            ref={cardRef}
             id={hasDownloadableCard ? "download-card-area" : undefined}
             className="w-full lg:ml-auto lg:max-w-[26rem]"
           >

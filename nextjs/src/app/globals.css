@@ -221,6 +221,14 @@ a {
   animation: wiggle 360ms ease-in-out;
 }
 
+[data-export-mode="fallback"] [data-landmark-image] {
+  display: none;
+}
+
+[data-export-mode="fallback"] [data-landmark-image-export-fallback] {
+  display: block;
+}
+
 @keyframes wiggle {
   0% {
     transform: rotate(0deg);
@@ -247,6 +255,12 @@ a {
 
   .sticker-card {
     box-shadow: 4px 4px 0 0 var(--sticker-shadow, var(--placedna-border));
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
   }
 }
 

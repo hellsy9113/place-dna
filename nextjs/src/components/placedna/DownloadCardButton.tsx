@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { type RefObject, useState } from "react";
 
-import html2canvas from "html2canvas";
+import { toPng } from "html-to-image";
 import { Download } from "lucide-react";
 
-type DownloadCardButtonProps = {
-  placeName?: string;
-  targetId?: string;
-  title?: string;
-};
+import type { PlaceDNAResponse } from "@/types/placedna";
 
-const DEFAULT_TARGET_ID = "download-card-area";
+type DownloadCardButtonProps = {
+  cardRef: RefObject<HTMLDivElement | null>;
+  placeCard: PlaceDNAResponse | null;
+  isGenerating?: boolean;
+};
 
 function sanitizeFilePart(value: string) {
   return value
@@ -21,31 +21,21 @@ function sanitizeFilePart(value: string) {
     .slice(0, 60);
 }
 
-function buildFileName(title?: string, placeName?: string) {
-  const parts = [title, placeName]
-    .map((value) => value?.trim())
-    .filter((value): value is string => Boolean(value))
-    .map(sanitizeFilePart)
-    .filter(Boolean);
+function buildFileName(placeCard: PlaceDNAResponse) {
+  const rawName = placeCard.place_name || placeCard.title || placeCard.landmark.name || "placedna-card";
+  const safeName = sanitizeFilePart(rawName);
 
-  const suffix = parts.length > 0 ? parts.join("-") : "place-card";
-  return `placedna-${suffix}.png`;
+  return `${safeName || "placedna-card"}.png`;
 }
 
-async function canvasToBlob(canvas: HTMLCanvasElement) {
-  return await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) {
-        resolve(blob);
-        return;
-      }
-
-      reject(new Error("Could not finish the card download."));
-    }, "image/png");
-  });
+async function downloadDataUrl(dataUrl: string, fileName: string) {
+  const link = document.createElement("a");
+  link.href = dataUrl;
+  link.download = fileName;
+  link.click();
 }
 
-async function downloadElementAsPng(target: HTMLElement, fileName: string) {
+async function renderCardToPng(target: HTMLElement) {
   await document.fonts.ready;
 
   const rect = target.getBoundingClientRect();
@@ -54,74 +44,126 @@ async function downloadElementAsPng(target: HTMLElement, fileName: string) {
     throw new Error("Could not find a visible card to download.");
   }
 
-  const canvas = await html2canvas(target, {
-    backgroundColor: null,
-    logging: false,
-    scale: Math.max(window.devicePixelRatio, 2),
-    useCORS: true,
-    width: Math.ceil(rect.width),
-    height: Math.ceil(rect.height),
+  return await toPng(target, {
+    cacheBust: true,
+    pixelRatio: Math.max(window.devicePixelRatio, 2),
+    backgroundColor: "#FFFDF5",
+    canvasWidth: Math.ceil(rect.width * Math.max(window.devicePixelRatio, 2)),
+    canvasHeight: Math.ceil(rect.height * Math.max(window.devicePixelRatio, 2)),
   });
-  const blob = await canvasToBlob(canvas);
-  const downloadUrl = URL.createObjectURL(blob);
+}
 
+async function downloadElementAsPng(target: HTMLElement, fileName: string) {
+  const dataUrl = await renderCardToPng(target);
+  await downloadDataUrl(dataUrl, fileName);
+}
+
+async function downloadElementAsPngWithoutExternalImages(
+  target: HTMLElement,
+  fileName: string,
+) {
+  target.dataset.exportMode = "fallback";
   try {
-    const link = document.createElement("a");
-    link.href = downloadUrl;
-    link.download = fileName;
-    link.click();
+    const dataUrl = await renderCardToPng(target);
+    await downloadDataUrl(dataUrl, fileName);
   } finally {
-    URL.revokeObjectURL(downloadUrl);
+    delete target.dataset.exportMode;
   }
 }
 
 export function DownloadCardButton({
-  placeName,
-  targetId = DEFAULT_TARGET_ID,
-  title,
+  cardRef,
+  placeCard,
+  isGenerating = false,
 }: DownloadCardButtonProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusTone, setStatusTone] = useState<"neutral" | "secondary" | "quaternary">("neutral");
+  const isDisabled = placeCard === null || isGenerating || isDownloading;
 
   async function handleDownload() {
-    const target = document.getElementById(targetId);
+    const target = cardRef.current;
 
-    if (!(target instanceof HTMLElement)) {
-      setStatusMessage("Card download is unavailable right now.");
+    if (!placeCard || !(target instanceof HTMLElement)) {
+      setStatusTone("secondary");
+      setStatusMessage("Generate a card first.");
       return;
     }
 
     setIsDownloading(true);
     setStatusMessage(null);
+    setStatusTone("neutral");
 
     try {
-      await downloadElementAsPng(target, buildFileName(title, placeName));
+      await downloadElementAsPng(target, buildFileName(placeCard));
+      setStatusTone("quaternary");
       setStatusMessage("PlaceDNA card downloaded.");
     } catch (error) {
-      setStatusMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not download the PlaceDNA card.",
-      );
+      console.error("Card download failed:", error);
+
+      try {
+        await downloadElementAsPngWithoutExternalImages(target, buildFileName(placeCard));
+        setStatusTone("quaternary");
+        setStatusMessage("PlaceDNA card downloaded with a safe image fallback.");
+      } catch (fallbackError) {
+        console.error("Card download fallback failed:", fallbackError);
+        setStatusTone("secondary");
+        setStatusMessage("Download failed. Use Print / Save as PDF instead.");
+      }
     } finally {
       setIsDownloading(false);
     }
   }
 
+  function handlePrintFallback() {
+    if (!placeCard) {
+      setStatusTone("secondary");
+      setStatusMessage("Generate a card first.");
+      return;
+    }
+
+    setStatusTone("neutral");
+    setStatusMessage("Opening Print / Save PDF…");
+    window.print();
+  }
+
   return (
-    <>
-      <button
-        type="button"
-        onClick={handleDownload}
-        disabled={isDownloading}
-        className="btn inline-flex items-center justify-center gap-2 rounded-full border-2 border-[color:var(--placedna-ink)] bg-[color:var(--placedna-accent)] px-5 font-bold text-white shadow-[4px_4px_0_#1E293B] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#1E293B] disabled:cursor-wait disabled:opacity-80 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_#1E293B] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#1E293B]"
-      >
-        <Download className="h-4 w-4" strokeWidth={2.5} />
-        <span>{isDownloading ? "Preparing..." : "Download Card"}</span>
-      </button>
+    <div className="no-print space-y-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={handleDownload}
+          disabled={isDisabled}
+          className="btn inline-flex items-center justify-center gap-2 rounded-full border-2 border-[color:var(--placedna-ink)] bg-[color:var(--placedna-accent)] px-5 font-bold text-white shadow-[4px_4px_0_#1E293B] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#1E293B] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_#1E293B] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#1E293B]"
+        >
+          <Download className="h-4 w-4" strokeWidth={2.5} />
+          <span>{isDownloading ? "Preparing..." : "Download Card"}</span>
+        </button>
+        <button
+          type="button"
+          onClick={handlePrintFallback}
+          disabled={placeCard === null || isGenerating || isDownloading}
+          className="btn inline-flex items-center justify-center gap-2 rounded-full border-2 border-[color:var(--placedna-ink)] bg-white px-5 font-bold text-[color:var(--placedna-ink)] shadow-[4px_4px_0_#1E293B] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#1E293B] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_#1E293B] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#1E293B]"
+        >
+          <span>Print / Save PDF</span>
+        </button>
+      </div>
+      {statusMessage ? (
+        <p
+          className={
+            statusTone === "secondary"
+              ? "text-sm font-semibold text-[color:var(--color-error)]"
+              : statusTone === "quaternary"
+                ? "text-sm font-semibold text-[color:var(--placedna-ink)]"
+                : "text-sm text-[color:var(--placedna-muted-foreground)]"
+          }
+        >
+          {statusMessage}
+        </p>
+      ) : null}
       <span aria-live="polite" className="sr-only">
         {statusMessage}
       </span>
-    </>
+    </div>
   );
 }
