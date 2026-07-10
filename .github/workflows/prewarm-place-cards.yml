@@ -1,0 +1,97 @@
+name: Prewarm PlaceDNA Cards
+
+on:
+  schedule:
+    # Daily at 02:17 UTC.
+    # In India, this is 07:47 AM IST.
+    - cron: "17 2 * * *"
+
+  workflow_dispatch:
+    inputs:
+      random_count:
+        description: "Number of random India candidates"
+        required: false
+        default: "10"
+        type: string
+
+      batch_size:
+        description: "Maximum candidates to process"
+        required: false
+        default: "20"
+        type: string
+
+      dry_run:
+        description: "Run without saving cards"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+permissions:
+  contents: read
+
+jobs:
+  prewarm:
+    name: Prewarm PlaceDNA cache
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: fastapi
+
+    env:
+      DATABASE_URL: ${{ secrets.PLACEDNA_DATABASE_URL }}
+
+      OVERPASS_API_URL: https://overpass-api.de/api/interpreter
+      WIKIDATA_API_URL: https://www.wikidata.org/w/api.php
+      LANDMARK_LOOKUP_TIMEOUT_SECONDS: "8"
+
+      PREWARM_ENABLE_FIXED_SEEDS: "true"
+      PREWARM_ENABLE_RANDOM_INDIA: "true"
+
+      PREWARM_RANDOM_COUNT: ${{ github.event_name == 'workflow_dispatch' && inputs.random_count || '10' }}
+      PREWARM_BATCH_SIZE: ${{ github.event_name == 'workflow_dispatch' && inputs.batch_size || '20' }}
+      PREWARM_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+
+      PREWARM_SLEEP_SECONDS: "3"
+      PREWARM_CACHE_DISTANCE_M: "300"
+      PREWARM_MAX_AGE_DAYS: "30"
+      PREWARM_FORCE_REFRESH: "false"
+
+      PREWARM_VALIDATE_CANDIDATES: "true"
+      PREWARM_MIN_CERTAINTY_SCORE: "0.65"
+      PREWARM_SKIP_VAGUE_CARDS: "true"
+
+      PRODUCTION_VALIDATE_CLICKS: "true"
+      PRODUCTION_SKIP_EXTERNAL_API_FOR_INVALID_CLICKS: "true"
+      PRODUCTION_CACHE_ONLY_USEFUL_CARDS: "true"
+      PRODUCTION_MIN_CERTAINTY_SCORE: "0.50"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify prewarm module exists
+        run: |
+          python - <<'PY'
+          import importlib
+          importlib.import_module("app.jobs.prewarm_place_cards")
+          print("Prewarm module found.")
+          PY
+
+      - name: Run PlaceDNA prewarm job
+        run: |
+          python -m app.jobs.prewarm_place_cards

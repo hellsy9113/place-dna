@@ -1,0 +1,58 @@
+[
+  {
+    "label": "India Gate",
+    "lat": 28.6129,
+    "lon": 77.2295,
+    "radius_m": 500,
+    "source": "fixed_seed"
+  },
+  {
+    "label": "Taj Mahal",
+    "lat": 27.1751,
+    "lon": 78.0421,
+    "radius_m": 500,
+    "source": "fixed_seed"
+  },
+  {
+    "label": "Gateway of India",
+    "lat": 18.9218,
+    "lon": 72.8347,
+    "radius_m": 500,
+    "source": "fixed_seed"
+  },
+  {
+    "label": "Mysuru Palace",
+    "lat": 12.3051,
+    "lon": 76.6551,
+    "radius_m": 500,
+    "source": "fixed_seed"
+  },
+  {
+    "label": "Hampi",
+    "lat": 15.3350,
+    "lon": 76.4600,
+    "radius_m": 500,
+    "source": "fixed_seed"
+  },
+  {
+    "label": "Marine Drive",
+    "lat": 18.9430,
+    "lon": 72.8238,
+    "radius_m": 500,
+    "source": "fixed_seed"
+  },
+  {
+    "label": "Charminar",
+    "lat": 17.3616,
+    "lon": 78.4747,
+    "radius_m": 500,
+    "source": "fixed_seed"
+  },
+  {
+    "label": "Victoria Memorial",
+    "lat": 22.5448,
+    "lon": 88.3426,
+    "radius_m": 500,
+    "source": "fixed_seed"
+  }
+]

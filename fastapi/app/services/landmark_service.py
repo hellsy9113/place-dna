@@ -10,7 +10,6 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-_TIMEOUT_SECONDS = settings.landmark_lookup_timeout_seconds
 _REQUEST_HEADERS = {
     "Accept": "application/json",
     "User-Agent": "PlaceDNA/0.1",
@@ -20,6 +19,20 @@ _FALLBACK_OVERPASS_URLS = [
     "https://z.overpass-api.de/api/interpreter",
     "https://lz4.overpass-api.de/api/interpreter",
 ]
+
+
+def _landmark_lookup_timeout() -> httpx.Timeout:
+    return httpx.Timeout(
+        timeout=settings.landmark_lookup_timeout_seconds,
+        connect=settings.landmark_lookup_connect_timeout_seconds,
+        read=settings.landmark_lookup_read_timeout_seconds,
+        write=settings.landmark_lookup_write_timeout_seconds,
+        pool=settings.landmark_lookup_pool_timeout_seconds,
+    )
+
+
+def _overpass_query_timeout_seconds() -> int:
+    return max(1, math.ceil(settings.landmark_lookup_timeout_seconds))
 
 
 def find_nearest_landmark(lat: float, lon: float, radius_m: int = 1000) -> dict[str, Any]:
@@ -117,7 +130,7 @@ def _build_overpass_query_with_categories(
 """
 
     return f"""
-[out:json][timeout:{settings.landmark_lookup_timeout_seconds}];
+[out:json][timeout:{_overpass_query_timeout_seconds()}];
 (
   node(around:{radius_m},{lat},{lon})["tourism"];
   way(around:{radius_m},{lat},{lon})["tourism"];
@@ -149,23 +162,85 @@ def _query_overpass_elements(
         radius_m=radius_m,
         include_soft_categories=include_soft_categories,
     )
+    timeout = _landmark_lookup_timeout()
 
     for overpass_url in _overpass_urls():
         try:
-            with httpx.Client(timeout=_TIMEOUT_SECONDS, headers=_REQUEST_HEADERS) as client:
+            with httpx.Client(timeout=timeout, headers=_REQUEST_HEADERS) as client:
                 response = client.post(
                     overpass_url,
                     data={"data": query},
                 )
                 response.raise_for_status()
                 payload = response.json()
-        except (httpx.HTTPError, ValueError) as exc:
-            logger.warning("Overpass landmark lookup failed via %s: %s", overpass_url, exc)
+        except httpx.TimeoutException:
+            logger.warning(
+                "Overpass landmark lookup timed out via=%s lat=%s lon=%s radius_m=%s",
+                overpass_url,
+                lat,
+                lon,
+                radius_m,
+            )
+            continue
+        except httpx.HTTPStatusError as exc:
+            logger.warning(
+                "Overpass landmark lookup failed status=%s via=%s lat=%s lon=%s radius_m=%s",
+                exc.response.status_code,
+                overpass_url,
+                lat,
+                lon,
+                radius_m,
+            )
+            continue
+        except httpx.HTTPError:
+            logger.exception(
+                "Overpass landmark lookup HTTP error via=%s lat=%s lon=%s radius_m=%s",
+                overpass_url,
+                lat,
+                lon,
+                radius_m,
+            )
+            continue
+        except ValueError:
+            logger.exception(
+                "Overpass landmark lookup returned invalid JSON via=%s lat=%s lon=%s radius_m=%s",
+                overpass_url,
+                lat,
+                lon,
+                radius_m,
+            )
+            continue
+        except Exception:
+            logger.exception(
+                "Unexpected Overpass landmark lookup failure via=%s lat=%s lon=%s radius_m=%s",
+                overpass_url,
+                lat,
+                lon,
+                radius_m,
+            )
+            continue
+
+        if not isinstance(payload, dict):
+            logger.warning(
+                "Overpass landmark lookup returned unexpected payload via=%s lat=%s lon=%s radius_m=%s",
+                overpass_url,
+                lat,
+                lon,
+                radius_m,
+            )
             continue
 
         elements = payload.get("elements", [])
         if isinstance(elements, list):
             return elements
+
+        logger.warning(
+            "Overpass landmark lookup returned non-list elements via=%s lat=%s lon=%s radius_m=%s",
+            overpass_url,
+            lat,
+            lon,
+            radius_m,
+        )
 
     return []
 
@@ -402,23 +477,49 @@ def _select_best_candidate(candidates: list[dict[str, Any]]) -> dict[str, Any]:
 
 def _fetch_wikidata_images(wikidata_ids: list[str]) -> dict[str, str | None]:
     unique_ids = list(dict.fromkeys(wikidata_ids))
+    joined_ids = ",".join(unique_ids)
     params = {
         "action": "wbgetentities",
         "ids": "|".join(unique_ids),
         "props": "claims",
         "format": "json",
     }
+    timeout = _landmark_lookup_timeout()
 
     try:
-        with httpx.Client(timeout=_TIMEOUT_SECONDS, headers=_REQUEST_HEADERS) as client:
+        with httpx.Client(timeout=timeout, headers=_REQUEST_HEADERS) as client:
             response = client.get(settings.wikidata_api_url, params=params)
             response.raise_for_status()
             payload = response.json()
-    except (httpx.HTTPError, ValueError) as exc:
-        logger.warning("Wikidata lookup failed: %s", exc)
+    except httpx.TimeoutException:
+        logger.warning("Wikidata image lookup timed out ids=%s", joined_ids)
+        return {wikidata_id: None for wikidata_id in unique_ids}
+    except httpx.HTTPStatusError as exc:
+        logger.warning(
+            "Wikidata image lookup failed status=%s ids=%s",
+            exc.response.status_code,
+            joined_ids,
+        )
+        return {wikidata_id: None for wikidata_id in unique_ids}
+    except httpx.HTTPError:
+        logger.exception("Wikidata image lookup HTTP error ids=%s", joined_ids)
+        return {wikidata_id: None for wikidata_id in unique_ids}
+    except ValueError:
+        logger.exception("Wikidata image lookup returned invalid JSON ids=%s", joined_ids)
+        return {wikidata_id: None for wikidata_id in unique_ids}
+    except Exception:
+        logger.exception("Unexpected Wikidata image lookup failure ids=%s", joined_ids)
+        return {wikidata_id: None for wikidata_id in unique_ids}
+
+    if not isinstance(payload, dict):
+        logger.warning("Wikidata image lookup returned unexpected payload ids=%s", joined_ids)
         return {wikidata_id: None for wikidata_id in unique_ids}
 
     entities = payload.get("entities", {})
+    if not isinstance(entities, dict):
+        logger.warning("Wikidata image lookup returned non-dict entities ids=%s", joined_ids)
+        return {wikidata_id: None for wikidata_id in unique_ids}
+
     image_map: dict[str, str | None] = {}
 
     for wikidata_id in unique_ids:
