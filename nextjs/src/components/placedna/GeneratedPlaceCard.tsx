@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { Globe2, Landmark, LoaderCircle, MapPinned, TriangleAlert } from "lucide-react";
 
 import { rarityToneMap } from "@/lib/design";
@@ -6,6 +5,7 @@ import type { PlaceDNAResponse } from "@/types/placedna";
 
 import { ShapeBadge } from "../ui/ShapeBadge";
 import { StickerCard } from "../ui/StickerCard";
+import { LandmarkImage } from "./LandmarkImage";
 import { PlaceStatMeter } from "./PlaceStatMeter";
 import { PlaceTraitList } from "./PlaceTraitList";
 import { RarityBadge } from "./RarityBadge";
@@ -124,33 +124,13 @@ export function GeneratedPlaceCard({
         </div>
 
         <div className="overflow-hidden rounded-[2rem_2rem_1.2rem_1.2rem] border-2 border-[color:var(--placedna-ink)] bg-[repeating-linear-gradient(135deg,#ede9fe_0_12px,#fdf2f8_12px_24px,#fffbeb_24px_36px)] p-4 print:rounded-[1.3rem_1.3rem_0.9rem_0.9rem] print:p-2.5">
-          {landmarkImageUrl ? (
-            <div className="relative h-52 w-full overflow-hidden rounded-[1.5rem_1.5rem_1rem_1rem] border-2 border-[color:var(--placedna-ink)] bg-white/70 print:h-28 print:rounded-[1rem_1rem_0.75rem_0.75rem]">
-              <Image
-                src={landmarkImageUrl}
-                alt={`Landmark view of ${data.landmark.name}`}
-                fill
-                sizes="(min-width: 1280px) 420px, (min-width: 1024px) 38vw, (min-width: 640px) 50vw, 100vw"
-                className="object-cover"
-              />
-            </div>
-          ) : (
-            <div className="relative h-52 rounded-[1.5rem_1.5rem_1rem_1rem] border-2 border-[color:var(--placedna-ink)] bg-[linear-gradient(135deg,rgba(139,92,246,0.22),rgba(244,114,182,0.16),rgba(251,191,36,0.22),rgba(255,255,255,0.8))] p-4 print:h-28 print:rounded-[1rem_1rem_0.75rem_0.75rem] print:p-2.5">
-              <ShapeBadge tone={tone} className="px-3 py-2 text-[0.62rem] tracking-[0.18em] print:px-2 print:py-1 print:text-[0.5rem]">
-                Landmark placeholder
-              </ShapeBadge>
-              <div className="mt-14 flex items-end gap-2 print:mt-6 print:gap-1.5">
-                <span className="h-10 w-5 rounded-t-full bg-white/55 print:h-5 print:w-3" />
-                <span className="h-14 w-7 rounded-t-full bg-white/70 print:h-7 print:w-4" />
-                <span className="h-8 w-4 rounded-t-full bg-white/50 print:h-4 print:w-2.5" />
-                <span className="h-18 w-8 rounded-t-full bg-white/82 print:h-9 print:w-4.5" />
-                <span className="h-12 w-6 rounded-t-full bg-white/64 print:h-6 print:w-3.5" />
-              </div>
-              <p className="mt-4 text-sm font-semibold text-[color:var(--placedna-ink)] print:mt-2 print:text-[0.68rem]">
-                {data.landmark.name}
-              </p>
-            </div>
-          )}
+          <LandmarkImage
+            key={landmarkImageUrl ?? data.landmark.name}
+            alt={`Landmark view of ${data.landmark.name}`}
+            imageUrl={landmarkImageUrl}
+            landmarkName={data.landmark.name}
+            tone={tone}
+          />
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 print:mt-2 print:gap-2">
             <div className="space-y-1">
               <p className="text-[0.68rem] font-bold uppercase tracking-[0.2em] text-[color:var(--placedna-muted-foreground)] print:text-[0.55rem]">

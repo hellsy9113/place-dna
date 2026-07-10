@@ -27,6 +27,15 @@ class FakeClient:
             raise effect
         return effect
 
+
+def test_normalize_image_url_rejects_non_http_values() -> None:
+    assert landmark_service.normalize_image_url(None) is None
+    assert landmark_service.normalize_image_url("") is None
+    assert landmark_service.normalize_image_url("ftp://example.com/image.jpg") is None
+    assert landmark_service.normalize_image_url(" https://example.com/image.jpg ") == (
+        "https://example.com/image.jpg"
+    )
+
     def get(self, *args, **kwargs):
         if self._get_index >= len(self._get_effects):
             raise AssertionError("unexpected get call")

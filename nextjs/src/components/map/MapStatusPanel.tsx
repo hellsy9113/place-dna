@@ -10,6 +10,7 @@ type MapStatusPanelProps = {
   isLoading: boolean;
   isLocating?: boolean;
   locationError?: string | null;
+  locationWarning?: string | null;
   radiusM?: number;
   selectedLocation: SelectedMapLocation | null;
 };
@@ -19,19 +20,25 @@ export function MapStatusPanel({
   isLoading,
   isLocating = false,
   locationError = null,
+  locationWarning = null,
   radiusM = 500,
   selectedLocation,
 }: MapStatusPanelProps) {
   const hasSelection = selectedLocation !== null;
   const hasLocationError = locationError !== null;
+  const hasLocationWarning = locationWarning !== null;
   const isBusy = isLocating || isLoading;
   const panelTone = hasLocationError || error
     ? "secondary"
+    : hasLocationWarning
+      ? "tertiary"
     : hasSelection
       ? "quaternary"
       : "neutral";
   const badgeTone = hasLocationError
     ? "secondary"
+    : hasLocationWarning
+      ? "tertiary"
     : isBusy
       ? "accent"
       : hasSelection
@@ -43,6 +50,8 @@ export function MapStatusPanel({
       ? "Reading place DNA"
       : hasLocationError
         ? "Location unavailable"
+        : hasLocationWarning
+          ? "Approximate location"
         : error
           ? "Could not generate card"
           : hasSelection
@@ -56,11 +65,11 @@ export function MapStatusPanel({
           <ShapeBadge
             tone={badgeTone}
             className="px-3 py-2 text-[0.64rem] tracking-[0.18em]"
-            soft={!isBusy && !hasLocationError && !error}
+            soft={!isBusy && !hasLocationError && !hasLocationWarning && !error}
           >
             {isLocating || isLoading ? (
               <LoaderCircle className="mr-1 h-3.5 w-3.5 animate-spin" strokeWidth={2.5} />
-            ) : hasLocationError || error ? (
+            ) : hasLocationError || hasLocationWarning || error ? (
               <TriangleAlert className="mr-1 h-3.5 w-3.5" strokeWidth={2.5} />
             ) : hasSelection ? (
               <LocateFixed className="mr-1 h-3.5 w-3.5" strokeWidth={2.5} />
@@ -90,6 +99,10 @@ export function MapStatusPanel({
         {locationError ? (
           <p className="text-sm leading-6 text-[color:var(--placedna-muted-foreground)]">
             {locationError}
+          </p>
+        ) : locationWarning ? (
+          <p className="text-sm leading-6 text-[color:var(--placedna-muted-foreground)]">
+            {locationWarning}
           </p>
         ) : error ? (
           <p className="text-sm leading-6 text-[color:var(--placedna-muted-foreground)]">

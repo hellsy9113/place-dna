@@ -543,14 +543,28 @@ def _extract_wikimedia_image_url(claims: dict[str, Any]) -> str | None:
         return None
 
     encoded_filename = quote(filename.strip(), safe="")
-    return f"https://commons.wikimedia.org/wiki/Special:FilePath/{encoded_filename}?width=600"
+    return normalize_image_url(
+        f"https://commons.wikimedia.org/wiki/Special:FilePath/{encoded_filename}?width=600"
+    )
+
+
+def normalize_image_url(url: str | None) -> str | None:
+    if not url:
+        return None
+
+    cleaned = url.strip()
+    if not cleaned.startswith(("https://", "http://")):
+        return None
+
+    return cleaned
 
 
 def _to_landmark_response(candidate: dict[str, Any]) -> dict[str, Any]:
+    image_url = normalize_image_url(candidate.get("image_url"))
     landmark = {
         "name": candidate["name"],
         "distance_m": candidate["distance_m"],
-        "image_url": candidate["image_url"],
+        "image_url": image_url,
         "source": candidate["source"],
         "osm_type": candidate["osm_type"],
         "osm_id": candidate["osm_id"],
@@ -560,7 +574,7 @@ def _to_landmark_response(candidate: dict[str, Any]) -> dict[str, Any]:
         "tourism": candidate["tourism"],
     }
 
-    if candidate["image_url"]:
+    if image_url:
         landmark["source"] = "openstreetmap,wikidata"
 
     return landmark

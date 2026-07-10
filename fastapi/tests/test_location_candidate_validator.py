@@ -51,3 +51,17 @@ def test_prewarm_validation_is_stricter_than_production_validation() -> None:
     assert production_result.is_valid is True
     assert prewarm_result.is_valid is False
     assert "safe India land-biased regions" in prewarm_result.reason
+
+
+def test_production_validation_allows_low_certainty_supported_click() -> None:
+    result = validate_production_click(31.2, 77.2)
+
+    assert result.is_valid is True
+    assert result.certainty_score == pytest.approx(0.4)
+
+
+def test_prewarm_validation_still_rejects_low_certainty_supported_click() -> None:
+    result = validate_prewarm_candidate(31.2, 77.2)
+
+    assert result.is_valid is False
+    assert result.certainty_score == pytest.approx(0.4)

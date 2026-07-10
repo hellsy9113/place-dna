@@ -17,6 +17,11 @@ import { MapStatusPanel } from "./MapStatusPanel";
 import { PlaceMap } from "./PlaceMap";
 
 const DEFAULT_RADIUS_M = 500;
+const APPROXIMATE_LOCATION_THRESHOLD_M = 10000;
+const UNSUPPORTED_LOCATION_MESSAGE =
+  "This location is outside the currently supported PlaceDNA coverage area.";
+const UNSUPPORTED_LOCATION_FRIENDLY_MESSAGE =
+  "This location is not supported yet. Try another nearby land location.";
 
 export function MapDemoClient() {
   const [selectedLocation, setSelectedLocation] =
@@ -25,15 +30,56 @@ export function MapDemoClient() {
   const [isLocating, setIsLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationWarning, setLocationWarning] = useState<string | null>(null);
   const [card, setCard] = useState<PlaceDNAResponse | null>(null);
   const [focusRequest, setFocusRequest] = useState<MapFocusRequest | null>(null);
   const requestIdRef = useRef(0);
   const focusRequestIdRef = useRef(0);
   const hasDownloadableCard = card !== null && !isLoading && !error;
 
-  async function generateCardForLocation(location: SelectedMapLocation) {
+  function focusMapOnLocation(location: SelectedMapLocation) {
+    const focusId = focusRequestIdRef.current + 1;
+    focusRequestIdRef.current = focusId;
+
+    setFocusRequest({
+      id: focusId,
+      location,
+    });
+  }
+
+  function getApiErrorMessage(caughtError: unknown): string {
+    if (caughtError instanceof Error) {
+      if (caughtError.message === UNSUPPORTED_LOCATION_MESSAGE) {
+        return UNSUPPORTED_LOCATION_FRIENDLY_MESSAGE;
+      }
+      if (caughtError.message.trim()) {
+        return caughtError.message;
+      }
+    }
+
+    return "Could not generate this PlaceDNA card. Try another location.";
+  }
+
+  function getApproximateLocationWarning(accuracyM: number) {
+    const accuracyKm = accuracyM >= 1000
+      ? `${(accuracyM / 1000).toFixed(1)} km`
+      : `${Math.round(accuracyM)} m`;
+    return `Your browser returned an approximate location (accuracy about ${accuracyKm}). You can click the map manually for better accuracy.`;
+  }
+
+  async function generateCardForCoordinates(
+    lat: number,
+    lon: number,
+    source: "map_click" | "device_location",
+  ) {
+    const location = { lat, lon };
+
     setSelectedLocation(location);
+    setIsLocating(false);
     setLocationError(null);
+    if (source === "map_click") {
+      setLocationWarning(null);
+    }
     setIsLoading(true);
     setError(null);
     setCard(null);
@@ -43,8 +89,8 @@ export function MapDemoClient() {
 
     try {
       const result = await fetchPlaceDNA({
-        lat: location.lat,
-        lon: location.lon,
+        lat,
+        lon,
         radiusM: DEFAULT_RADIUS_M,
       });
 
@@ -58,14 +104,11 @@ export function MapDemoClient() {
         return;
       }
 
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Failed to generate PlaceDNA card.",
-      );
+      setError(getApiErrorMessage(caughtError));
     } finally {
       if (requestIdRef.current === requestId) {
         setIsLoading(false);
+        setIsLocating(false);
       }
     }
   }
@@ -84,30 +127,48 @@ export function MapDemoClient() {
   }
 
   function handleUseMyLocation() {
+    setLocationWarning(null);
+
     if (!navigator.geolocation) {
       setLocationError("Location is not supported by this browser.");
+      setIsLocating(false);
       return;
     }
 
+    setError(null);
     setLocationError(null);
     setIsLocating(true);
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        const accuracy = position.coords.accuracy;
         const location = {
-          lat: position.coords.latitude,
-          lon: position.coords.longitude,
+          lat,
+          lon,
         };
 
-        const focusId = focusRequestIdRef.current + 1;
-        focusRequestIdRef.current = focusId;
-
-        setFocusRequest({
-          id: focusId,
-          location,
+        console.log("Device geolocation result:", {
+          lat,
+          lon,
+          accuracy,
         });
+
+        focusMapOnLocation(location);
+        setSelectedLocation(location);
         setIsLocating(false);
-        void generateCardForLocation(location);
+        setLocationError(null);
+
+        if (accuracy > APPROXIMATE_LOCATION_THRESHOLD_M) {
+          setLocationWarning(getApproximateLocationWarning(accuracy));
+          setError(null);
+          setCard(null);
+          return;
+        }
+
+        setLocationWarning(null);
+        void generateCardForCoordinates(lat, lon, "device_location");
       },
       (locationIssue) => {
         setIsLocating(false);
@@ -115,8 +176,8 @@ export function MapDemoClient() {
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000,
+        timeout: 15000,
+        maximumAge: 0,
       },
     );
   }
@@ -169,7 +230,12 @@ export function MapDemoClient() {
 
           <PlaceMap
             focusRequest={focusRequest}
-            onLocationSelect={generateCardForLocation}
+            onLocationSelect={(location) => {
+              setError(null);
+              setLocationError(null);
+              setLocationWarning(null);
+              void generateCardForCoordinates(location.lat, location.lon, "map_click");
+            }}
           />
           <MapStatusPanel
             selectedLocation={selectedLocation}
@@ -177,6 +243,7 @@ export function MapDemoClient() {
             isLocating={isLocating}
             error={error}
             locationError={locationError}
+            locationWarning={locationWarning}
             radiusM={DEFAULT_RADIUS_M}
           />
         </div>
