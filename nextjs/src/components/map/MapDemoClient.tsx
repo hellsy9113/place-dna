@@ -5,8 +5,8 @@ import { useRef, useState } from "react";
 import { fetchPlaceDNA } from "@/lib/api/placeDna";
 import type { PlaceDNAResponse, SelectedMapLocation } from "@/types/placedna";
 
+import { DownloadCardButton } from "../placedna/DownloadCardButton";
 import { GeneratedPlaceCard } from "../placedna/GeneratedPlaceCard";
-import { PrintCardButton } from "../placedna/PrintCardButton";
 import { ShapeBadge } from "../ui/ShapeBadge";
 import { MapStatusPanel } from "./MapStatusPanel";
 import { PlaceMap } from "./PlaceMap";
@@ -20,7 +20,7 @@ export function MapDemoClient() {
   const [error, setError] = useState<string | null>(null);
   const [card, setCard] = useState<PlaceDNAResponse | null>(null);
   const requestIdRef = useRef(0);
-  const hasPrintableCard = card !== null && !isLoading && !error;
+  const hasDownloadableCard = card !== null && !isLoading && !error;
 
   async function handleLocationSelect(location: SelectedMapLocation) {
     setSelectedLocation(location);
@@ -89,23 +89,24 @@ export function MapDemoClient() {
         </div>
 
         <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-          {hasPrintableCard ? (
-            <div className="no-print flex justify-start lg:justify-end">
-              <PrintCardButton />
+          {hasDownloadableCard ? (
+            <div className="flex justify-start lg:justify-end">
+              <DownloadCardButton
+                title={card?.title}
+                placeName={card?.place_name}
+              />
             </div>
           ) : null}
 
           <div
-            id={hasPrintableCard ? "print-card-area" : undefined}
-            className={hasPrintableCard ? "contents" : undefined}
+            id={hasDownloadableCard ? "download-card-area" : undefined}
+            className="w-full lg:ml-auto lg:max-w-[26rem]"
           >
-            <div className="print-card-scale w-full lg:ml-auto lg:max-w-[26rem]">
-              <GeneratedPlaceCard
-                data={card}
-                isLoading={isLoading}
-                error={error}
-              />
-            </div>
+            <GeneratedPlaceCard
+              data={card}
+              isLoading={isLoading}
+              error={error}
+            />
           </div>
         </div>
       </div>
