@@ -113,7 +113,7 @@ function applyFocusRequest(
   map.flyTo({
     center: [request.location.lon, request.location.lat],
     zoom: 13,
-    essential: true,
+    essential: false,
   });
 }
 
@@ -152,19 +152,26 @@ export function PlaceMap({ focusRequest = null, onLocationSelect }: PlaceMapProp
       center: initialCenter,
       zoom: 4,
       attributionControl: false,
+      cooperativeGestures: true,
     });
+    const resizeObserver = new ResizeObserver(() => {
+      map.resize();
+    });
+
+    resizeObserver.observe(containerRef.current);
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
 
     const fitIndiaView = () => {
       map.fitBounds(indiaBounds, {
-        padding: 40,
+        padding: window.innerWidth < 640 ? 20 : 40,
         duration: 0,
       });
     };
 
     map.once("load", () => {
+      map.resize();
       fitIndiaView();
       applyFocusRequest(
         mapRef,
@@ -215,6 +222,7 @@ export function PlaceMap({ focusRequest = null, onLocationSelect }: PlaceMapProp
     mapRef.current = map;
 
     return () => {
+      resizeObserver.disconnect();
       markerRef.current?.remove();
       markerRef.current = null;
       map.remove();
@@ -223,10 +231,15 @@ export function PlaceMap({ focusRequest = null, onLocationSelect }: PlaceMapProp
   }, []);
 
   return (
-    <div className="relative">
+    <div className="relative" aria-describedby="map-instructions">
       <MapClickHint />
       <div className="relative overflow-hidden rounded-[1.75rem] border-2 border-[color:var(--placedna-ink)] shadow-pop">
-        <div ref={containerRef} className="h-[460px] w-full" />
+        <div
+          ref={containerRef}
+          role="region"
+          aria-label="Interactive satellite map of India"
+          className="h-[55svh] min-h-[360px] w-full lg:h-[min(70vh,660px)] lg:min-h-[520px]"
+        />
         <div className="pointer-events-none absolute inset-0 bg-[#FFFDF5]/10 mix-blend-soft-light" />
       </div>
     </div>

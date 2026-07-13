@@ -26,7 +26,7 @@ export function FinalCTASection() {
               Start with a point on the map. PlaceDNA turns it into a story, a
               score, and a collectible card.
             </p>
-            <PopButton href="#demo-panel" size="lg" className="mt-8 pl-6 pr-3">
+            <PopButton href="/map" size="lg" className="mt-8 pl-6 pr-3">
               <span>Open map demo</span>
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[color:var(--placedna-accent)]">
                 <ArrowRight className="h-4 w-4" strokeWidth={2.5} />

@@ -1,4 +1,4 @@
-import { Globe2, Landmark, LoaderCircle, MapPinned, TriangleAlert } from "lucide-react";
+import { LoaderCircle, MapPinned, TriangleAlert } from "lucide-react";
 
 import { rarityToneMap } from "@/lib/design";
 import type { PlaceDNAResponse } from "@/types/placedna";
@@ -25,6 +25,39 @@ const statMeta = [
   { key: "liveability", label: "Liveability", tone: "warning" },
 ] as const;
 
+function formatCoordinate(
+  value: number,
+  positiveDirection: "N" | "E",
+  negativeDirection: "S" | "W",
+) {
+  const direction = value >= 0 ? positiveDirection : negativeDirection;
+  return `${Math.abs(value).toFixed(4)}\u00B0${direction}`;
+}
+
+function getShortDescription(description: string) {
+  const normalizedDescription = description.replace(/\s+/g, " ").trim();
+
+  if (normalizedDescription.length <= 240) {
+    return normalizedDescription;
+  }
+
+  const shortenedDescription = normalizedDescription.slice(0, 237);
+  const lastWordBoundary = shortenedDescription.lastIndexOf(" ");
+  return `${shortenedDescription.slice(0, lastWordBoundary)}...`;
+}
+
+function getLandmarkDistanceLabel(distanceM: number | null) {
+  if (distanceM === null) {
+    return null;
+  }
+
+  if (distanceM < 1000) {
+    return `${Math.max(10, Math.round(distanceM / 10) * 10)} m away`;
+  }
+
+  return `${(distanceM / 1000).toFixed(1)} km away`;
+}
+
 export function GeneratedPlaceCard({
   data,
   isLoading,
@@ -33,16 +66,20 @@ export function GeneratedPlaceCard({
   if (isLoading) {
     return (
       <StickerCard tone="accent" hoverable={false} className="print:rounded-[1rem]">
-        <div className="card-body items-center justify-center gap-4 p-8 text-center print:gap-3 print:p-5">
+        <div
+          role="status"
+          aria-live="polite"
+          className="card-body min-h-[22rem] items-center justify-center gap-4 p-8 text-center print:gap-3 print:p-5"
+        >
           <span className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-[color:var(--placedna-ink)] bg-[color:var(--placedna-accent-soft)] shadow-pop">
             <LoaderCircle className="h-7 w-7 animate-spin" strokeWidth={2.5} />
           </span>
           <h3 className="font-display text-3xl font-extrabold text-[color:var(--placedna-ink)] print:text-2xl">
-            Reading the place DNA...
+            Reading this place&apos;s signal...
           </h3>
           <p className="max-w-sm text-sm leading-7 text-[color:var(--placedna-muted-foreground)] print:text-xs print:leading-5">
-            Pulling real geospatial signals from the backend and turning them into
-            a collectible location card.
+            Combining landscape, access, density, and landmark signals into a
+            collectible card.
           </p>
         </div>
       </StickerCard>
@@ -52,18 +89,18 @@ export function GeneratedPlaceCard({
   if (error) {
     return (
       <StickerCard tone="secondary" hoverable={false} shadowColor="#F472B6" className="print:rounded-[1rem]">
-        <div className="card-body gap-4 p-8 text-center print:gap-3 print:p-5">
+        <div
+          role="alert"
+          className="card-body min-h-[22rem] justify-center gap-4 p-8 text-center print:gap-3 print:p-5"
+        >
           <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border-2 border-[color:var(--placedna-ink)] bg-[color:var(--placedna-secondary-soft)] shadow-pop">
             <TriangleAlert className="h-7 w-7" strokeWidth={2.5} />
           </span>
           <h3 className="font-display text-3xl font-extrabold text-[color:var(--placedna-ink)] print:text-2xl">
-            Could not generate card
+            Could not generate this card
           </h3>
           <p className="text-sm leading-7 text-[color:var(--placedna-muted-foreground)] print:text-xs print:leading-5">
             {error}
-          </p>
-          <p className="text-sm font-semibold text-[color:var(--placedna-ink)]">
-            Try another location.
           </p>
         </div>
       </StickerCard>
@@ -73,15 +110,15 @@ export function GeneratedPlaceCard({
   if (!data) {
     return (
       <StickerCard tone="neutral" hoverable={false} className="print:rounded-[1rem]">
-        <div className="card-body gap-5 p-8 text-center print:gap-3 print:p-5">
+        <div className="card-body min-h-[22rem] justify-center gap-5 p-8 text-center print:gap-3 print:p-5">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border-2 border-[color:var(--placedna-ink)] bg-[color:var(--placedna-muted)] shadow-pop">
             <MapPinned className="h-7 w-7" strokeWidth={2.5} />
           </div>
           <h3 className="font-display text-3xl font-extrabold text-[color:var(--placedna-ink)] print:text-2xl">
-            No card generated yet
+            Your card will appear here
           </h3>
           <p className="max-w-sm text-sm leading-7 text-[color:var(--placedna-muted-foreground)] print:text-xs print:leading-5">
-            Click a location on the map to reveal its DNA.
+            Click anywhere on the map in India to reveal a place&apos;s DNA.
           </p>
         </div>
       </StickerCard>
@@ -90,10 +127,8 @@ export function GeneratedPlaceCard({
 
   const tone = rarityToneMap[data.rarity];
   const landmarkImageUrl = data.landmark.image_url?.trim() || null;
-  const landmarkDistanceLabel =
-    data.landmark.distance_m === null
-      ? "Distance unavailable"
-      : `${Math.round(data.landmark.distance_m)}m away`;
+  const landmarkDistanceLabel = getLandmarkDistanceLabel(data.landmark.distance_m);
+  const shortDescription = getShortDescription(data.description);
 
   return (
     <StickerCard
@@ -101,7 +136,10 @@ export function GeneratedPlaceCard({
       shadowColor="#F472B6"
       className="print:rounded-[1rem]"
     >
-      <article className="card-body gap-5 p-5 print:gap-3 print:p-3.5">
+      <article
+        aria-label={`${data.title} PlaceDNA card for ${data.place_name}`}
+        className="card-body gap-5 p-5 print:gap-3 print:p-3.5"
+      >
         <div className="flex items-start justify-between gap-4">
           <div>
             <RarityBadge rarity={data.rarity} />
@@ -109,9 +147,6 @@ export function GeneratedPlaceCard({
               {data.place_name}
             </p>
           </div>
-          <ShapeBadge tone="quaternary" soft className="px-3 py-2 text-[0.62rem] tracking-[0.18em] print:px-2 print:py-1 print:text-[0.5rem]">
-            API card
-          </ShapeBadge>
         </div>
 
         <div>
@@ -140,40 +175,19 @@ export function GeneratedPlaceCard({
                 {data.landmark.name}
               </p>
             </div>
-            <ShapeBadge tone="tertiary" soft className="px-3 py-2 text-[0.62rem] tracking-[0.18em] print:px-2 print:py-1 print:text-[0.5rem]">
-              {landmarkDistanceLabel}
-            </ShapeBadge>
+            {landmarkDistanceLabel ? (
+              <ShapeBadge tone="tertiary" soft className="px-3 py-2 text-[0.62rem] tracking-[0.18em] print:px-2 print:py-1 print:text-[0.5rem]">
+                {landmarkDistanceLabel}
+              </ShapeBadge>
+            ) : null}
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 print:gap-2">
-          <div className="rounded-[1.35rem] border-2 border-[color:var(--placedna-ink)] bg-[color:var(--placedna-accent-soft)] p-4 print:rounded-[0.95rem] print:p-2.5">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-[color:var(--placedna-ink)] bg-[color:var(--placedna-accent)] text-white print:h-8 print:w-8">
-              <Globe2 className="h-4 w-4 print:h-3.5 print:w-3.5" strokeWidth={2.5} />
-            </span>
-            <p className="mt-3 text-[0.68rem] font-bold uppercase tracking-[0.2em] text-[color:var(--placedna-muted-foreground)] print:mt-2 print:text-[0.55rem]">
-              Region type
-            </p>
-            <p className="mt-2 text-sm font-semibold text-[color:var(--placedna-ink)] print:mt-1 print:text-[0.68rem]">
-              {data.region_type}
-            </p>
-          </div>
-          <div className="rounded-[1.35rem] border-2 border-[color:var(--placedna-ink)] bg-[color:var(--placedna-tertiary-soft)] p-4 print:rounded-[0.95rem] print:p-2.5">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-[color:var(--placedna-ink)] bg-[color:var(--placedna-tertiary)] text-[color:var(--placedna-ink)] print:h-8 print:w-8">
-              <Landmark className="h-4 w-4 print:h-3.5 print:w-3.5" strokeWidth={2.5} />
-            </span>
-            <p className="mt-3 text-[0.68rem] font-bold uppercase tracking-[0.2em] text-[color:var(--placedna-muted-foreground)] print:mt-2 print:text-[0.55rem]">
-              Place name
-            </p>
-            <p className="mt-2 text-sm font-semibold text-[color:var(--placedna-ink)] print:mt-1 print:text-[0.68rem]">
-              {data.place_name}
-            </p>
-          </div>
-        </div>
-
-        <p className="text-sm leading-7 text-[color:var(--placedna-muted-foreground)] print:text-[0.7rem] print:leading-5">
-          {data.description}
-        </p>
+        {shortDescription ? (
+          <p className="text-sm leading-7 text-[color:var(--placedna-muted-foreground)] print:text-[0.7rem] print:leading-5">
+            {shortDescription}
+          </p>
+        ) : null}
 
         <ul className="space-y-3 print:space-y-2">
           {statMeta.map((stat) => (
@@ -196,13 +210,11 @@ export function GeneratedPlaceCard({
           </div>
         </div>
 
-        <div className="grid gap-3 rounded-[1.35rem] border-2 border-[color:var(--placedna-ink)] bg-[color:var(--placedna-paper)] px-4 py-3 text-xs font-bold uppercase tracking-[0.18em] text-[color:var(--placedna-muted-foreground)] sm:grid-cols-2 print:gap-2 print:rounded-[0.95rem] print:px-3 print:py-2 print:text-[0.58rem]">
+        <div className="rounded-[1.35rem] border-2 border-[color:var(--placedna-ink)] bg-[color:var(--placedna-paper)] px-4 py-3 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[color:var(--placedna-muted-foreground)] print:rounded-[0.95rem] print:px-3 print:py-2 print:text-[0.58rem]">
           <span className="flex items-center gap-2 print:gap-1.5">
-            <MapPinned className="h-3.5 w-3.5 print:h-3 print:w-3" strokeWidth={2.5} />
-            {data.location.lat.toFixed(4)}, {data.location.lon.toFixed(4)}
-          </span>
-          <span className="text-[color:var(--placedna-ink)] sm:text-right">
-            Radius {data.location.radius_m}m
+            <MapPinned className="h-3.5 w-3.5 print:h-3 print:w-3" aria-hidden="true" strokeWidth={2.5} />
+            {formatCoordinate(data.location.lat, "N", "S")},{" "}
+            {formatCoordinate(data.location.lon, "E", "W")}
           </span>
         </div>
       </article>

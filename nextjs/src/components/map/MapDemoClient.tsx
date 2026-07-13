@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { LoaderCircle, LocateFixed } from "lucide-react";
 
-import { fetchPlaceDNA } from "@/lib/api/placeDna";
+import { fetchPlaceDNA, getFriendlyErrorMessage } from "@/lib/api/placeDna";
 import type {
   MapFocusRequest,
   PlaceDNAResponse,
@@ -18,10 +18,6 @@ import { PlaceMap } from "./PlaceMap";
 
 const DEFAULT_RADIUS_M = 500;
 const APPROXIMATE_LOCATION_THRESHOLD_M = 10000;
-const UNSUPPORTED_LOCATION_MESSAGE =
-  "This location is outside the currently supported PlaceDNA coverage area.";
-const UNSUPPORTED_LOCATION_FRIENDLY_MESSAGE =
-  "This location is not supported yet. Try another nearby land location.";
 
 export function MapDemoClient() {
   const [selectedLocation, setSelectedLocation] =
@@ -36,7 +32,8 @@ export function MapDemoClient() {
   const cardRef = useRef<HTMLDivElement | null>(null);
   const requestIdRef = useRef(0);
   const focusRequestIdRef = useRef(0);
-  const hasDownloadableCard = card !== null && !isLoading && !error;
+  const hasExportableCard = card !== null && !isLoading;
+  const isShowingPreviousCard = card !== null && error !== null;
 
   function focusMapOnLocation(location: SelectedMapLocation) {
     const focusId = focusRequestIdRef.current + 1;
@@ -48,24 +45,8 @@ export function MapDemoClient() {
     });
   }
 
-  function getApiErrorMessage(caughtError: unknown): string {
-    if (caughtError instanceof Error) {
-      if (caughtError.message === UNSUPPORTED_LOCATION_MESSAGE) {
-        return UNSUPPORTED_LOCATION_FRIENDLY_MESSAGE;
-      }
-      if (caughtError.message.trim()) {
-        return caughtError.message;
-      }
-    }
-
-    return "Could not generate this PlaceDNA card. Try another location.";
-  }
-
-  function getApproximateLocationWarning(accuracyM: number) {
-    const accuracyKm = accuracyM >= 1000
-      ? `${(accuracyM / 1000).toFixed(1)} km`
-      : `${Math.round(accuracyM)} m`;
-    return `Your browser returned an approximate location (accuracy about ${accuracyKm}). You can click the map manually for better accuracy.`;
+  function getApproximateLocationWarning() {
+    return "Your browser returned an approximate location. Zoom in and click the exact spot manually.";
   }
 
   async function generateCardForCoordinates(
@@ -83,7 +64,6 @@ export function MapDemoClient() {
     }
     setIsLoading(true);
     setError(null);
-    setCard(null);
 
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
@@ -100,12 +80,12 @@ export function MapDemoClient() {
       }
 
       setCard(result);
+      setError(null);
     } catch (caughtError) {
       if (requestIdRef.current !== requestId) {
         return;
       }
-
-      setError(getApiErrorMessage(caughtError));
+      setError(getFriendlyErrorMessage(caughtError));
     } finally {
       if (requestIdRef.current === requestId) {
         setIsLoading(false);
@@ -117,13 +97,13 @@ export function MapDemoClient() {
   function getGeolocationErrorMessage(locationIssue: GeolocationPositionError) {
     switch (locationIssue.code) {
       case locationIssue.PERMISSION_DENIED:
-        return "Location permission was denied. You can still click anywhere on the map.";
+        return "Location permission was denied. You can still click the map manually.";
       case locationIssue.POSITION_UNAVAILABLE:
-        return "Your current location is unavailable right now. Try again in a moment.";
+        return "Could not get your location right now. Try again or click the map manually.";
       case locationIssue.TIMEOUT:
-        return "Location request timed out. Try again or select a point manually.";
+        return "Could not get your location quickly enough. Try again or click the map manually.";
       default:
-        return "Could not get your location. Try again or click a point on the map.";
+        return "Could not get your location. Try again or click the map manually.";
     }
   }
 
@@ -150,21 +130,14 @@ export function MapDemoClient() {
           lon,
         };
 
-        console.log("Device geolocation result:", {
-          lat,
-          lon,
-          accuracy,
-        });
-
         focusMapOnLocation(location);
         setSelectedLocation(location);
         setIsLocating(false);
         setLocationError(null);
 
         if (accuracy > APPROXIMATE_LOCATION_THRESHOLD_M) {
-          setLocationWarning(getApproximateLocationWarning(accuracy));
+          setLocationWarning(getApproximateLocationWarning());
           setError(null);
-          setCard(null);
           return;
         }
 
@@ -188,9 +161,9 @@ export function MapDemoClient() {
       id="map-demo"
       className="mx-auto max-w-7xl px-4 pb-10 pt-4 sm:px-6 lg:px-8 lg:pb-12 lg:pt-6"
     >
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,26rem)] lg:items-start">
-        <div className="space-y-5">
-          <div className="max-w-2xl space-y-3">
+      <div className="grid gap-7 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,26rem)] lg:items-start">
+        <div className="flex min-w-0 flex-col gap-5">
+          <div className="order-1 max-w-2xl space-y-3">
             <ShapeBadge tone="accent" className="px-3 py-2 text-[0.62rem] tracking-[0.2em]">
               Live map demo
             </ShapeBadge>
@@ -202,23 +175,24 @@ export function MapDemoClient() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 rounded-[1.35rem] border-2 border-[color:var(--placedna-ink)] bg-white/90 p-4 shadow-pop sm:flex-row sm:items-center sm:justify-between">
+          <div className="order-3 flex flex-col gap-3 rounded-[1.35rem] border-2 border-[color:var(--placedna-ink)] bg-white/95 p-4 shadow-pop sm:flex-row sm:items-center sm:justify-between lg:order-2">
             <div className="space-y-2">
               <ShapeBadge tone="tertiary" soft className="px-3 py-2 text-[0.62rem] tracking-[0.2em]">
-                Browser geolocation
+                Find this device
               </ShapeBadge>
               <p className="text-sm leading-6 text-[color:var(--placedna-muted-foreground)]">
-                Jump to your current spot and generate a live PlaceDNA card for it.
+                Jump to your current spot and generate its PlaceDNA card.
               </p>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--placedna-muted-foreground)]">
-                Your location is used only to generate this card.
+              <p className="max-w-lg text-xs font-medium leading-5 text-[color:var(--placedna-muted-foreground)]">
+                Your browser asks for permission. This location is used to generate
+                a PlaceDNA card.
               </p>
             </div>
             <button
               type="button"
               onClick={handleUseMyLocation}
               disabled={isLocating || isLoading}
-              className="btn inline-flex items-center justify-center gap-2 self-start rounded-full border-2 border-[color:var(--placedna-ink)] bg-[color:var(--placedna-quaternary)] px-5 font-bold text-[color:var(--placedna-ink)] shadow-[4px_4px_0_#1E293B] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#1E293B] disabled:cursor-wait disabled:opacity-80 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_#1E293B] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#1E293B] sm:self-center"
+              className="btn min-h-11 w-full gap-2 rounded-full border-2 border-[color:var(--placedna-ink)] bg-[color:var(--placedna-quaternary)] px-5 font-bold text-[color:var(--placedna-ink)] shadow-[4px_4px_0_#1E293B] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#1E293B] disabled:cursor-wait disabled:opacity-70 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_#1E293B] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#1E293B] sm:w-auto sm:self-center"
             >
               {isLocating ? (
                 <LoaderCircle className="h-4 w-4 animate-spin" strokeWidth={2.5} />
@@ -229,47 +203,63 @@ export function MapDemoClient() {
             </button>
           </div>
 
-          <PlaceMap
-            focusRequest={focusRequest}
-            onLocationSelect={(location) => {
-              setError(null);
-              setLocationError(null);
-              setLocationWarning(null);
-              void generateCardForCoordinates(location.lat, location.lon, "map_click");
-            }}
-          />
-          <MapStatusPanel
-            selectedLocation={selectedLocation}
-            isLoading={isLoading}
-            isLocating={isLocating}
-            error={error}
-            locationError={locationError}
-            locationWarning={locationWarning}
-            radiusM={DEFAULT_RADIUS_M}
-          />
-        </div>
-
-        <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-          <div className="flex justify-start lg:justify-end">
-            <DownloadCardButton
-              cardRef={cardRef}
-              placeCard={card}
-              isGenerating={isLoading}
+          <div className="order-2 lg:order-3">
+            <PlaceMap
+              focusRequest={focusRequest}
+              onLocationSelect={(location) => {
+                setError(null);
+                setLocationError(null);
+                setLocationWarning(null);
+                void generateCardForCoordinates(location.lat, location.lon, "map_click");
+              }}
             />
           </div>
+          <div className="order-4">
+            <MapStatusPanel
+              selectedLocation={selectedLocation}
+              isLoading={isLoading}
+              isLocating={isLocating}
+              error={error}
+              locationError={locationError}
+              locationWarning={locationWarning}
+            />
+          </div>
+        </div>
+
+        <aside aria-label="Generated PlaceDNA card" className="min-w-0 space-y-4 lg:sticky lg:top-6 lg:self-start">
+          {card ? (
+            <div className="flex justify-stretch sm:justify-start lg:justify-end">
+              <DownloadCardButton
+                key={`${card.id}-${card.location.lat}-${card.location.lon}`}
+                cardRef={cardRef}
+                placeCard={card}
+                isGenerating={isLoading}
+              />
+            </div>
+          ) : null}
+
+          {isShowingPreviousCard ? (
+            <p
+              role="status"
+              className="no-print rounded-[1.1rem] border-2 border-[color:var(--placedna-ink)] bg-[color:var(--placedna-tertiary-soft)] px-4 py-3 text-sm font-semibold leading-6 text-[color:var(--placedna-ink)]"
+            >
+              Showing your last generated card. Choose another supported land
+              location to replace it.
+            </p>
+          ) : null}
 
           <div
             ref={cardRef}
-            id={hasDownloadableCard ? "download-card-area" : undefined}
+            id={hasExportableCard ? "print-card-area" : undefined}
             className="w-full lg:ml-auto lg:max-w-[26rem]"
           >
             <GeneratedPlaceCard
               data={card}
               isLoading={isLoading}
-              error={error}
+              error={card ? null : error}
             />
           </div>
-        </div>
+        </aside>
       </div>
     </section>
   );

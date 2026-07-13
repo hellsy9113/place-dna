@@ -3,7 +3,7 @@
 import { type RefObject, useState } from "react";
 
 import { toPng } from "html-to-image";
-import { Download } from "lucide-react";
+import { Download, Printer } from "lucide-react";
 
 import type { PlaceDNAResponse } from "@/types/placedna";
 
@@ -22,7 +22,11 @@ function sanitizeFilePart(value: string) {
 }
 
 function buildFileName(placeCard: PlaceDNAResponse) {
-  const rawName = placeCard.place_name || placeCard.title || placeCard.landmark.name || "placedna-card";
+  const rawName =
+    placeCard.place_name ||
+    placeCard.title ||
+    placeCard.landmark.name ||
+    "placedna-card";
   const safeName = sanitizeFilePart(rawName);
 
   return `${safeName || "placedna-card"}.png`;
@@ -98,17 +102,15 @@ export function DownloadCardButton({
       await downloadElementAsPng(target, buildFileName(placeCard));
       setStatusTone("quaternary");
       setStatusMessage("PlaceDNA card downloaded.");
-    } catch (error) {
-      console.error("Card download failed:", error);
-
+    } catch {
       try {
         await downloadElementAsPngWithoutExternalImages(target, buildFileName(placeCard));
         setStatusTone("quaternary");
         setStatusMessage("PlaceDNA card downloaded with a safe image fallback.");
-      } catch (fallbackError) {
-        console.error("Card download fallback failed:", fallbackError);
+      } catch {
+        console.error("PlaceDNA card export failed.");
         setStatusTone("secondary");
-        setStatusMessage("Download failed. Use Print / Save as PDF instead.");
+        setStatusMessage("Download failed. Try Print / Save as PDF.");
       }
     } finally {
       setIsDownloading(false);
@@ -123,47 +125,46 @@ export function DownloadCardButton({
     }
 
     setStatusTone("neutral");
-    setStatusMessage("Opening Print / Save PDF…");
+    setStatusMessage("Opening Print / Save PDF...");
     window.print();
   }
 
   return (
-    <div className="no-print space-y-2">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="no-print w-full space-y-2 sm:w-auto">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <button
           type="button"
           onClick={handleDownload}
           disabled={isDisabled}
-          className="btn inline-flex items-center justify-center gap-2 rounded-full border-2 border-[color:var(--placedna-ink)] bg-[color:var(--placedna-accent)] px-5 font-bold text-white shadow-[4px_4px_0_#1E293B] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#1E293B] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_#1E293B] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#1E293B]"
+          aria-busy={isDownloading}
+          className="btn min-h-11 w-full gap-2 rounded-full border-2 border-[color:var(--placedna-ink)] bg-[color:var(--placedna-accent)] px-5 font-bold text-white shadow-[4px_4px_0_#1E293B] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#1E293B] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_#1E293B] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#1E293B] sm:w-auto"
         >
-          <Download className="h-4 w-4" strokeWidth={2.5} />
+          <Download className="h-4 w-4" aria-hidden="true" strokeWidth={2.5} />
           <span>{isDownloading ? "Preparing..." : "Download Card"}</span>
         </button>
         <button
           type="button"
           onClick={handlePrintFallback}
           disabled={placeCard === null || isGenerating || isDownloading}
-          className="btn inline-flex items-center justify-center gap-2 rounded-full border-2 border-[color:var(--placedna-ink)] bg-white px-5 font-bold text-[color:var(--placedna-ink)] shadow-[4px_4px_0_#1E293B] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#1E293B] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_#1E293B] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#1E293B]"
+          className="btn min-h-11 w-full gap-2 rounded-full border-2 border-[color:var(--placedna-ink)] bg-white px-5 font-bold text-[color:var(--placedna-ink)] shadow-[4px_4px_0_#1E293B] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#1E293B] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_#1E293B] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#1E293B] sm:w-auto"
         >
+          <Printer className="h-4 w-4" aria-hidden="true" strokeWidth={2.5} />
           <span>Print / Save PDF</span>
         </button>
       </div>
-      {statusMessage ? (
-        <p
-          className={
-            statusTone === "secondary"
-              ? "text-sm font-semibold text-[color:var(--color-error)]"
-              : statusTone === "quaternary"
-                ? "text-sm font-semibold text-[color:var(--placedna-ink)]"
-                : "text-sm text-[color:var(--placedna-muted-foreground)]"
-          }
-        >
-          {statusMessage}
-        </p>
-      ) : null}
-      <span aria-live="polite" className="sr-only">
+      <p
+        role={statusTone === "secondary" ? "alert" : "status"}
+        aria-live={statusTone === "secondary" ? "assertive" : "polite"}
+        className={`min-h-5 text-sm ${
+          statusTone === "secondary"
+            ? "font-semibold text-[color:var(--color-error)]"
+            : statusTone === "quaternary"
+              ? "font-semibold text-[color:var(--placedna-ink)]"
+              : "text-[color:var(--placedna-muted-foreground)]"
+        }`}
+      >
         {statusMessage}
-      </span>
+      </p>
     </div>
   );
 }

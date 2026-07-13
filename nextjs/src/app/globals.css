@@ -74,6 +74,7 @@ html {
 
 body {
   min-height: 100vh;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at top left, rgba(251, 191, 36, 0.4), transparent 24%),
     radial-gradient(circle at 86% 6%, rgba(244, 114, 182, 0.22), transparent 18%),
@@ -229,6 +230,11 @@ a {
   display: block;
 }
 
+#print-card-area,
+#print-card-area * {
+  --fx-noise: none;
+}
+
 @keyframes wiggle {
   0% {
     transform: rotate(0deg);
@@ -258,7 +264,44 @@ a {
   }
 }
 
+@page {
+  margin: 12mm;
+}
+
 @media print {
+  body {
+    background: #fffdf5 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #print-card-area,
+  #print-card-area * {
+    visibility: visible;
+  }
+
+  #print-card-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    display: flex !important;
+    min-height: 100vh;
+    width: 100% !important;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 0 !important;
+    background: #fffdf5 !important;
+  }
+
+  #print-card-area > * {
+    width: 100%;
+    max-width: 108mm;
+  }
+
   .no-print {
     display: none !important;
   }
@@ -280,5 +323,9 @@ a {
   .candy-button:hover,
   .sticker-card--interactive:hover {
     transform: none !important;
+  }
+
+  .animate-spin {
+    animation: none !important;
   }
 }
