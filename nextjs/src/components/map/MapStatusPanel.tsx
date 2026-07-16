@@ -61,7 +61,7 @@ export function MapStatusPanel({
   const statusLabel = isLocating
     ? "Finding location"
     : isLoading
-      ? "Reading place DNA"
+      ? "Generating quick card"
       : hasLocationError
         ? "Location unavailable"
         : hasLocationWarning
@@ -80,7 +80,7 @@ export function MapStatusPanel({
         : isLocating
           ? "Finding your location..."
           : isLoading
-            ? "Reading this place's signal..."
+            ? "Generating a quick card..."
             : hasSelection
               ? "Card ready. Click another point to reveal a new place."
               : "Click anywhere on the map in India to generate a PlaceDNA card.";

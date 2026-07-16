@@ -70,6 +70,9 @@ export type PlaceDNAResponse = {
   description: string;
   landmark: PlaceDNALandmark;
   location: PlaceDNALocation;
+  enrichment_status?: "basic" | "enriched" | "failed_enrichment";
+  enrichment_attempted_at?: string | null;
+  enrichment_error?: string | null;
 };
 
 export type SelectedMapLocation = {

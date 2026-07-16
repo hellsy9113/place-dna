@@ -1,10 +1,16 @@
 import hashlib
+from datetime import UTC, datetime
 from typing import Any
 
 from app.services.landmark_service import find_nearest_landmark
 
 
-def generate_mock_place_dna(lat: float, lon: float, radius_m: int) -> dict:
+def generate_mock_place_dna(
+    lat: float,
+    lon: float,
+    radius_m: int,
+    use_external_landmark_lookup: bool = True,
+) -> dict:
     rounded_lat = round(lat, 4)
     rounded_lon = round(lon, 4)
     digest = hashlib.sha256(f"{rounded_lat:.4f}:{rounded_lon:.4f}".encode("utf-8")).digest()
@@ -31,7 +37,17 @@ def generate_mock_place_dna(lat: float, lon: float, radius_m: int) -> dict:
         "connectivity": connectivity,
         "liveability": liveability,
     }
-    landmark = find_nearest_landmark(lat, lon, radius_m=radius_m)
+    enrichment_attempted_at = None
+    enrichment_error = None
+    if use_external_landmark_lookup:
+        enrichment_attempted_at = datetime.now(UTC)
+        landmark = find_nearest_landmark(lat, lon, radius_m=radius_m)
+        enrichment_status = "enriched" if landmark.get("is_real") else "failed_enrichment"
+        if enrichment_status == "failed_enrichment":
+            enrichment_error = "No landmark details were returned by external sources."
+    else:
+        enrichment_status = "basic"
+        landmark = _pending_landmark()
     region_type = _determine_region_type(stats)
     rarity = _adjust_rarity_for_landmark(
         _determine_rarity(stats, landmark_signal),
@@ -56,6 +72,24 @@ def generate_mock_place_dna(lat: float, lon: float, radius_m: int) -> dict:
             "lon": lon,
             "radius_m": radius_m,
         },
+        "enrichment_status": enrichment_status,
+        "enrichment_attempted_at": enrichment_attempted_at,
+        "enrichment_error": enrichment_error,
+    }
+
+
+def _pending_landmark() -> dict[str, Any]:
+    return {
+        "name": "Landmark enrichment pending",
+        "distance_m": None,
+        "image_url": None,
+        "source": None,
+        "osm_type": None,
+        "osm_id": None,
+        "wikidata_id": None,
+        "is_real": False,
+        "historic": False,
+        "tourism": False,
     }
 
 

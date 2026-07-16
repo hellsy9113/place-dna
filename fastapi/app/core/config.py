@@ -6,11 +6,13 @@ class Settings(BaseSettings):
 
     overpass_api_url: str = "https://overpass-api.de/api/interpreter"
     wikidata_api_url: str = "https://www.wikidata.org/w/api.php"
-    landmark_lookup_timeout_seconds: float = 8.0
-    landmark_lookup_connect_timeout_seconds: float = 5.0
-    landmark_lookup_read_timeout_seconds: float = 8.0
+    landmark_lookup_timeout_seconds: float = 5.0
+    landmark_lookup_connect_timeout_seconds: float = 3.0
+    landmark_lookup_read_timeout_seconds: float = 5.0
     landmark_lookup_write_timeout_seconds: float = 5.0
     landmark_lookup_pool_timeout_seconds: float = 5.0
+    database_connect_timeout_seconds: int = 5
+    database_pool_recycle_seconds: int = 300
 
     frontend_origin: str | None = None
     allowed_origins: str = (
@@ -31,10 +33,17 @@ class Settings(BaseSettings):
     prewarm_min_certainty_score: float = 0.65
     prewarm_validate_candidates: bool = True
     prewarm_skip_vague_cards: bool = True
+    prewarm_use_external_landmark_lookup: bool = True
+    prewarm_enrichment_batch_size: int = 20
     production_validate_clicks: bool = True
     production_skip_external_api_for_invalid_clicks: bool = True
     production_cache_only_useful_cards: bool = True
     production_min_certainty_score: float = 0.25
+    production_use_external_landmark_lookup: bool = False
+    memory_card_cache_enabled: bool = True
+    memory_card_cache_ttl_seconds: int = 600
+    memory_card_cache_max_items: int = 500
+    memory_card_cache_coordinate_precision: int = 3
 
     model_config = SettingsConfigDict(
         env_file=".env",

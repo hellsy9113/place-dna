@@ -6,16 +6,60 @@ os.environ.setdefault(
 )
 
 import pytest
-from fastapi.testclient import TestClient
+import httpx
+from fastapi import HTTPException, Response
+from fastapi.encoders import jsonable_encoder
 
-from app.db.session import get_db
-from app.main import app
+from app.api.place_dna import get_place_dna
 from app.schemas.place_dna import PlaceDNAResponse
+from app.services.memory_card_cache import clear_memory_card_cache
 
 
 class DummySession:
     def close(self) -> None:
         return None
+
+
+class ASGITestClient:
+    def __init__(self, db: DummySession) -> None:
+        self.db = db
+
+    def get(self, url: str, **kwargs) -> httpx.Response:
+        if url != "/api/place-dna":
+            raise AssertionError(f"Unsupported direct-test URL: {url}")
+
+        params = kwargs.get("params", {})
+        response = Response()
+        force_refresh = str(params.get("force_refresh", "false")).lower() == "true"
+
+        try:
+            result = get_place_dna(
+                response=response,
+                lat=float(params["lat"]),
+                lon=float(params["lon"]),
+                radius_m=int(params.get("radius_m", 500)),
+                force_refresh=force_refresh,
+                db=self.db,
+            )
+        except HTTPException as exc:
+            return httpx.Response(
+                status_code=exc.status_code,
+                json={"detail": jsonable_encoder(exc.detail)},
+                headers=exc.headers,
+            )
+
+        return httpx.Response(
+            status_code=200,
+            json=jsonable_encoder(result),
+            headers=dict(response.headers),
+        )
+
+
+@pytest.fixture(autouse=True)
+def reset_memory_card_cache():
+    clear_memory_card_cache()
+    yield
+    clear_memory_card_cache()
 
 
 @pytest.fixture
@@ -25,13 +69,7 @@ def dummy_db() -> DummySession:
 
 @pytest.fixture
 def client(dummy_db: DummySession):
-    def override_get_db():
-        yield dummy_db
-
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as test_client:
-        yield test_client
-    app.dependency_overrides.clear()
+    yield ASGITestClient(dummy_db)
 
 
 @pytest.fixture

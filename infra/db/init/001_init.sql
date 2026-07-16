@@ -27,6 +27,11 @@ CREATE TABLE IF NOT EXISTS place_cards (
     landmark_distance_m DOUBLE PRECISION,
     landmark_image_url TEXT,
 
+    enrichment_status TEXT NOT NULL DEFAULT 'basic'
+        CHECK (enrichment_status IN ('basic', 'enriched', 'failed_enrichment')),
+    enrichment_attempted_at TIMESTAMPTZ,
+    enrichment_error TEXT,
+
     geom GEOGRAPHY(POINT, 4326),
 
     created_at TIMESTAMPTZ DEFAULT NOW()
@@ -35,3 +40,9 @@ CREATE TABLE IF NOT EXISTS place_cards (
 CREATE INDEX IF NOT EXISTS idx_place_cards_geom
 ON place_cards
 USING GIST (geom);
+
+CREATE INDEX IF NOT EXISTS idx_place_cards_created_at
+ON place_cards (created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_place_cards_enrichment_status
+ON place_cards (enrichment_status, enrichment_attempted_at);

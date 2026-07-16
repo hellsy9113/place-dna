@@ -1,5 +1,6 @@
 import httpx
 
+from app.repositories.place_cards_repository import PlaceCardEnrichmentTarget
 from app.schemas.place_dna import PlaceDNAResponse
 from app.services import landmark_service, prewarm_service
 from app.services.random_india_sampler import PrewarmCandidate
@@ -174,3 +175,44 @@ def test_prewarm_continues_after_one_timeout_failure(
     assert result.cache_hits == 0
     assert result.skipped_invalid == 0
     assert result.skipped_vague == 0
+
+
+def test_prewarm_enriches_basic_cards_with_external_lookup(
+    monkeypatch,
+    sample_card_payload,
+) -> None:
+    target = PlaceCardEnrichmentTarget(
+        id="card-123",
+        lat=28.6129,
+        lon=77.2295,
+        radius_m=500,
+    )
+    generation_options = {}
+    updated = {}
+
+    monkeypatch.setattr(
+        prewarm_service,
+        "find_cards_pending_enrichment",
+        lambda db, limit: [target],
+    )
+
+    def fake_generate(**kwargs):
+        generation_options.update(kwargs)
+        return sample_card_payload(enrichment_status="enriched")
+
+    def fake_update(db, *, card_id, card):
+        updated["card_id"] = card_id
+        updated["status"] = card.enrichment_status
+
+    monkeypatch.setattr(prewarm_service, "generate_mock_place_dna", fake_generate)
+    monkeypatch.setattr(prewarm_service, "update_place_card_enrichment", fake_update)
+    monkeypatch.setattr(prewarm_service.settings, "prewarm_sleep_seconds", 0)
+
+    result = prewarm_service.PrewarmResult()
+    prewarm_service._enrich_pending_cards(object(), result)
+
+    assert generation_options["use_external_landmark_lookup"] is True
+    assert updated == {"card_id": "card-123", "status": "enriched"}
+    assert result.enrichment_candidates == 1
+    assert result.enriched == 1
+    assert result.failed_enrichment == 0

@@ -6,9 +6,17 @@ import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from sqlalchemy.orm import Session
+
 from app.core.config import settings
 from app.db.session import SessionLocal
-from app.repositories.place_cards_repository import find_cached_place_card, save_place_card
+from app.repositories.place_cards_repository import (
+    find_cached_place_card,
+    find_cards_pending_enrichment,
+    mark_place_card_enrichment_failed,
+    save_place_card,
+    update_place_card_enrichment,
+)
 from app.schemas.place_dna import PlaceDNAResponse
 from app.services.card_quality import is_generated_card_useful_for_cache
 from app.services.location_candidate_validator import validate_prewarm_candidate
@@ -28,6 +36,9 @@ class PrewarmResult:
     failed: int = 0
     skipped_invalid: int = 0
     skipped_vague: int = 0
+    enrichment_candidates: int = 0
+    enriched: int = 0
+    failed_enrichment: int = 0
 
 
 def load_fixed_seed_candidates() -> list[PrewarmCandidate]:
@@ -81,6 +92,12 @@ def run_prewarm_batch() -> PrewarmResult:
 
     db = SessionLocal()
     try:
+        if (
+            settings.prewarm_use_external_landmark_lookup
+            and not settings.prewarm_dry_run
+        ):
+            _enrich_pending_cards(db, result)
+
         for candidate in candidates:
             logger.info(
                 "Prewarm candidate: %s source=%s lat=%s lon=%s certainty=%s",
@@ -143,6 +160,9 @@ def run_prewarm_batch() -> PrewarmResult:
                             lat=candidate.lat,
                             lon=candidate.lon,
                             radius_m=candidate.radius_m,
+                            use_external_landmark_lookup=(
+                                settings.prewarm_use_external_landmark_lookup
+                            ),
                         )
                     )
                 except Exception:
@@ -190,3 +210,47 @@ def run_prewarm_batch() -> PrewarmResult:
 
     logger.info("Prewarm summary: %s", asdict(result))
     return result
+
+
+def _enrich_pending_cards(db: Session, result: PrewarmResult) -> None:
+    try:
+        targets = find_cards_pending_enrichment(
+            db,
+            limit=settings.prewarm_enrichment_batch_size,
+        )
+    except Exception:
+        logger.exception("Could not load cards pending landmark enrichment")
+        return
+
+    result.enrichment_candidates = len(targets)
+    for target in targets:
+        logger.info("Enriching PlaceDNA card id=%s", target.id)
+        try:
+            card = PlaceDNAResponse.model_validate(
+                generate_mock_place_dna(
+                    lat=target.lat,
+                    lon=target.lon,
+                    radius_m=target.radius_m,
+                    use_external_landmark_lookup=True,
+                )
+            )
+            update_place_card_enrichment(db, card_id=target.id, card=card)
+
+            if card.enrichment_status == "enriched":
+                result.enriched += 1
+            else:
+                result.failed_enrichment += 1
+        except Exception as exc:
+            result.failed_enrichment += 1
+            logger.exception("Landmark enrichment failed for card id=%s", target.id)
+            try:
+                mark_place_card_enrichment_failed(
+                    db,
+                    card_id=target.id,
+                    error=str(exc) or exc.__class__.__name__,
+                )
+            except Exception:
+                logger.exception("Could not record enrichment failure for card id=%s", target.id)
+        finally:
+            if settings.prewarm_sleep_seconds > 0:
+                time.sleep(settings.prewarm_sleep_seconds)

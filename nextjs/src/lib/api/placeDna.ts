@@ -22,6 +22,15 @@ type ParsedPlaceDNAError = {
   reason: string | null;
 };
 
+const REQUEST_TIMEOUT_MS = 15_000;
+
+class PlaceDNARequestTimeoutError extends Error {
+  constructor() {
+    super("PlaceDNA request timed out.");
+    this.name = "PlaceDNARequestTimeoutError";
+  }
+}
+
 class PlaceDNAApiError extends Error {
   readonly reason: string | null;
   readonly status: number;
@@ -78,6 +87,10 @@ function parsePlaceDNAError(payload: string): ParsedPlaceDNAError {
 }
 
 export function getFriendlyErrorMessage(error: unknown): string {
+  if (error instanceof PlaceDNARequestTimeoutError) {
+    return "Network is slow. Please try again or click another nearby location.";
+  }
+
   const source =
     error instanceof PlaceDNAApiError
       ? `${error.message} ${error.reason ?? ""}`
@@ -110,13 +123,31 @@ export async function fetchPlaceDNA({
   url.searchParams.set("lon", lon.toString());
   url.searchParams.set("radius_m", radiusM.toString());
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      Accept: "application/json",
-    },
-  });
+  const controller = new AbortController();
+  let didTimeOut = false;
+  const timeoutId = globalThis.setTimeout(() => {
+    didTimeOut = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
 
-  const payload = await response.text();
+  let response: Response;
+  let payload: string;
+  try {
+    response = await fetch(url.toString(), {
+      headers: {
+        Accept: "application/json",
+      },
+      signal: controller.signal,
+    });
+    payload = await response.text();
+  } catch (error) {
+    if (didTimeOut || (error instanceof DOMException && error.name === "AbortError")) {
+      throw new PlaceDNARequestTimeoutError();
+    }
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const parsedError = parsePlaceDNAError(payload);

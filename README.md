@@ -2,6 +2,13 @@
 
 ## Backend checks
 
+For an existing database, apply the enrichment migration once before deploying
+the updated backend:
+
+```bash
+psql "$DATABASE_URL" -f infra/db/init/002_add_place_card_enrichment.sql
+```
+
 ```bash
 cd fastapi
 source .venv/bin/activate
@@ -39,6 +46,8 @@ PREWARM_SLEEP_SECONDS=1 \
 LANDMARK_LOOKUP_TIMEOUT_SECONDS=5 \
 LANDMARK_LOOKUP_CONNECT_TIMEOUT_SECONDS=3 \
 LANDMARK_LOOKUP_READ_TIMEOUT_SECONDS=5 \
+PREWARM_USE_EXTERNAL_LANDMARK_LOOKUP=true \
+PRODUCTION_USE_EXTERNAL_LANDMARK_LOOKUP=false \
 python -m app.jobs.prewarm_place_cards
 ```
 

@@ -63,7 +63,7 @@ export function GeneratedPlaceCard({
   isLoading,
   error,
 }: GeneratedPlaceCardProps) {
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <StickerCard tone="accent" hoverable={false} className="print:rounded-[1rem]">
         <div
@@ -75,11 +75,10 @@ export function GeneratedPlaceCard({
             <LoaderCircle className="h-7 w-7 animate-spin" strokeWidth={2.5} />
           </span>
           <h3 className="font-display text-3xl font-extrabold text-[color:var(--placedna-ink)] print:text-2xl">
-            Reading this place&apos;s signal...
+            Generating a quick card...
           </h3>
           <p className="max-w-sm text-sm leading-7 text-[color:var(--placedna-muted-foreground)] print:text-xs print:leading-5">
-            Combining landscape, access, density, and landmark signals into a
-            collectible card.
+            Reading the location signals now. Landmark details can arrive later.
           </p>
         </div>
       </StickerCard>
@@ -127,6 +126,12 @@ export function GeneratedPlaceCard({
 
   const tone = rarityToneMap[data.rarity];
   const landmarkImageUrl = data.landmark.image_url?.trim() || null;
+  const isLandmarkPending =
+    data.enrichment_status === "basic" ||
+    data.landmark.name.trim().toLowerCase() === "landmark enrichment pending";
+  const landmarkDisplayName = isLandmarkPending
+    ? "Details coming soon"
+    : data.landmark.name;
   const landmarkDistanceLabel = getLandmarkDistanceLabel(data.landmark.distance_m);
   const shortDescription = getShortDescription(data.description);
 
@@ -136,6 +141,17 @@ export function GeneratedPlaceCard({
       shadowColor="#F472B6"
       className="print:rounded-[1rem]"
     >
+      {isLoading ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="no-print absolute right-4 top-4 z-20 inline-flex items-center gap-2 rounded-full border-2 border-[color:var(--placedna-ink)] bg-white px-3 py-2 text-xs font-extrabold text-[color:var(--placedna-ink)] shadow-[3px_3px_0_#1E293B]"
+        >
+          <LoaderCircle className="h-4 w-4 animate-spin" strokeWidth={2.5} />
+          Generating a quick card...
+        </div>
+      ) : null}
+
       <article
         aria-label={`${data.title} PlaceDNA card for ${data.place_name}`}
         className="card-body gap-5 p-5 print:gap-3 print:p-3.5"
@@ -160,10 +176,10 @@ export function GeneratedPlaceCard({
 
         <div className="overflow-hidden rounded-[2rem_2rem_1.2rem_1.2rem] border-2 border-[color:var(--placedna-ink)] bg-[repeating-linear-gradient(135deg,#ede9fe_0_12px,#fdf2f8_12px_24px,#fffbeb_24px_36px)] p-4 print:rounded-[1.3rem_1.3rem_0.9rem_0.9rem] print:p-2.5">
           <LandmarkImage
-            key={landmarkImageUrl ?? data.landmark.name}
-            alt={`Landmark view of ${data.landmark.name}`}
+            key={landmarkImageUrl ?? landmarkDisplayName}
+            alt={`Landmark view of ${landmarkDisplayName}`}
             imageUrl={landmarkImageUrl}
-            landmarkName={data.landmark.name}
+            landmarkName={landmarkDisplayName}
             tone={tone}
           />
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 print:mt-2 print:gap-2">
@@ -172,7 +188,7 @@ export function GeneratedPlaceCard({
                 Nearby landmark
               </p>
               <p className="text-sm font-semibold text-[color:var(--placedna-ink)] print:text-[0.68rem]">
-                {data.landmark.name}
+                {landmarkDisplayName}
               </p>
             </div>
             {landmarkDistanceLabel ? (
@@ -182,6 +198,13 @@ export function GeneratedPlaceCard({
             ) : null}
           </div>
         </div>
+
+        {isLandmarkPending ? (
+          <p className="rounded-[1.1rem] border-2 border-dashed border-[color:var(--placedna-ink)] bg-[color:var(--placedna-quaternary-soft)] px-4 py-3 text-sm font-semibold leading-6 text-[color:var(--placedna-ink)] print:px-3 print:py-2 print:text-[0.66rem] print:leading-5">
+            This card was generated quickly. Landmark details may improve after
+            background enrichment.
+          </p>
+        ) : null}
 
         {shortDescription ? (
           <p className="text-sm leading-7 text-[color:var(--placedna-muted-foreground)] print:text-[0.7rem] print:leading-5">

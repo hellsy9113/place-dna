@@ -1,9 +1,11 @@
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StrictFloat, StrictInt, StrictStr
 
 Rarity = Literal["Common", "Rare", "Epic", "Legendary", "Vulnerable"]
+EnrichmentStatus = Literal["basic", "enriched", "failed_enrichment"]
 
 
 class PlaceDNAStats(BaseModel):
@@ -50,3 +52,6 @@ class PlaceDNAResponse(BaseModel):
     description: StrictStr
     landmark: PlaceDNALandmark
     location: PlaceDNALocation
+    enrichment_status: EnrichmentStatus = "enriched"
+    enrichment_attempted_at: datetime | None = None
+    enrichment_error: StrictStr | None = None
